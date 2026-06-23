@@ -19,6 +19,14 @@ app.use(cors({
 // Request parsing middleware
 app.use(express.json());
 
+// Import routers
+import authRouter from './routes/auth';
+import userRouter from './routes/user';
+
+// Mount API routers
+app.use('/api/auth', authRouter);
+app.use('/api/user', userRouter);
+
 // Basic health check endpoint
 app.get('/health', (req, res) => {
   res.json({
