@@ -14,6 +14,7 @@ export interface DBUser {
   email: string;
   profile_image_url?: string;
   country?: string;
+  default_dial_value?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -45,7 +46,12 @@ class MemoryDB {
 
   async createUser(user: Omit<DBUser, 'id'>): Promise<DBUser> {
     const id = Math.random().toString(36).substring(2, 15);
-    const newUser = { ...user, id, created_at: new Date().toISOString() };
+    const newUser = {
+      ...user,
+      id,
+      default_dial_value: user.default_dial_value ?? 50,
+      created_at: new Date().toISOString()
+    };
     this.users.set(id, newUser);
     return newUser;
   }
@@ -102,9 +108,13 @@ class SupabaseDB {
   }
 
   async createUser(user: Omit<DBUser, 'id'>): Promise<DBUser> {
+    const userData = {
+      ...user,
+      default_dial_value: user.default_dial_value ?? 50
+    };
     const { data, error } = await this.client
       .from('users')
-      .insert([user])
+      .insert([userData])
       .select()
       .single();
     

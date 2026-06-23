@@ -50,6 +50,24 @@ if (isMockMode) {
 }
 
 /**
+ * Helper utility to wrap fetch requests with automatic retry on 429 Rate Limiting
+ */
+async function fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {
+  const response = await fetch(url, options);
+
+  if (response.status === 429 && retries > 0) {
+    const retryAfter = response.headers.get('Retry-After');
+    // Spotify's Retry-After header is in seconds
+    const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : 2000;
+    console.warn(`[Spotify API] Rate limit hit (429). Retrying in ${waitTime}ms...`);
+    await new Promise((resolve) => setTimeout(resolve, waitTime));
+    return fetchWithRetry(url, options, retries - 1);
+  }
+
+  return response;
+}
+
+/**
  * Exchange authorization code for Spotify tokens.
  */
 export async function exchangeCodeForTokens(code: string): Promise<SpotifyTokens> {
@@ -61,7 +79,7 @@ export async function exchangeCodeForTokens(code: string): Promise<SpotifyTokens
     };
   }
 
-  const response = await fetch('https://accounts.spotify.com/api/token', {
+  const response = await fetchWithRetry('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -98,7 +116,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<{ access
     };
   }
 
-  const response = await fetch('https://accounts.spotify.com/api/token', {
+  const response = await fetchWithRetry('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -136,7 +154,7 @@ export async function fetchSpotifyProfile(accessToken: string): Promise<SpotifyP
     };
   }
 
-  const response = await fetch('https://api.spotify.com/v1/me', {
+  const response = await fetchWithRetry('https://api.spotify.com/v1/me', {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -204,7 +222,7 @@ export async function fetchTopTracks(accessToken: string, limit = 10): Promise<S
     ].slice(0, limit);
   }
 
-  const response = await fetch(`https://api.spotify.com/v1/me/top/tracks?limit=${limit}&time_range=short_term`, {
+  const response = await fetchWithRetry(`https://api.spotify.com/v1/me/top/tracks?limit=${limit}&time_range=short_term`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -272,7 +290,7 @@ export async function fetchTopArtists(accessToken: string, limit = 10): Promise<
     ].slice(0, limit);
   }
 
-  const response = await fetch(`https://api.spotify.com/v1/me/top/artists?limit=${limit}&time_range=short_term`, {
+  const response = await fetchWithRetry(`https://api.spotify.com/v1/me/top/artists?limit=${limit}&time_range=short_term`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
