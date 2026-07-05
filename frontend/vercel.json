@@ -1,0 +1,23 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/callback",
+      "destination": "/"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ],
+  "env": {
+    "VITE_API_URL": {
+      "description": "Backend API URL (e.g., https://your-backend.onrender.com)",
+      "value": "http://localhost:3001"
+    }
+  }
+}
