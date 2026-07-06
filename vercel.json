@@ -1,13 +1,16 @@
 {
   "version": 2,
-  "rewrites": [
+  "routes": [
     {
-      "source": "/callback",
-      "destination": "/index.html"
+      "handle": "filesystem"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/callback",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
