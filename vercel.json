@@ -1,13 +1,13 @@
 {
-  "rootDirectory": "frontend",
-  "routes": [
+  "version": 2,
+  "rewrites": [
     {
-      "src": "/callback",
-      "dest": "/index.html"
+      "source": "/callback",
+      "destination": "/index.html"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
