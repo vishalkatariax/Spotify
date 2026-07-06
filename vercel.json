@@ -14,12 +14,8 @@
       "handle": "filesystem"
     },
     {
-      "src": "/callback",
-      "dest": "/"
-    },
-    {
-      "src": "^/(.*)$",
-      "dest": "/"
+      "src": "/.*",
+      "dest": "/index.html"
     }
   ]
 }
