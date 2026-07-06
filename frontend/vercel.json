@@ -9,20 +9,20 @@
       }
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "^/callback$",
-      "destination": "/index.html"
+      "handle": "filesystem"
     },
     {
-      "source": "^/(.*)$",
-      "destination": "/index.html"
+      "src": "/callback",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
   "env": {
-    "VITE_API_URL": {
-      "description": "Backend API URL (e.g., https://your-backend.onrender.com)",
-      "value": "http://localhost:3001"
-    }
+    "VITE_API_URL": "http://localhost:3001"
   }
 }
