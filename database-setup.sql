@@ -177,14 +177,14 @@ BEGIN
     WHERE tgname = 'tr_users_email_not_null'
   ) THEN
     CREATE OR REPLACE FUNCTION public.users_email_not_null()
-    RETURNS trigger AS $$
+    RETURNS trigger AS $fn$
     BEGIN
       IF NEW.email IS NULL OR length(trim(NEW.email::text)) = 0 THEN
         NEW.email := 'spotify_unknown@spotify.local';
       END IF;
       RETURN NEW;
     END;
-    $$ LANGUAGE plpgsql;
+    $fn$ LANGUAGE plpgsql;
 
     CREATE TRIGGER tr_users_email_not_null
     BEFORE INSERT OR UPDATE OF email
