@@ -9,6 +9,8 @@ services:
         value: production
       - key: PORT
         value: 3001
+      - key: FRONTEND_URL
+        value: https://spotify-frontend-kb5h4hkx9-vishal-kataria-s-projects.vercel.app
       - key: SPOTIFY_CLIENT_ID
         sync: false
       - key: SPOTIFY_CLIENT_SECRET

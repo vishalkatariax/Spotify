@@ -47,7 +47,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || '';
+const BACKEND_URL = import.meta.env.VITE_API_URL;
 
 function createMockUserProfile(): FullUserProfile {
   return {
@@ -118,10 +118,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       setError(null);
 
-      // If no backend URL or mock token, use mock profile
-      if (!BACKEND_URL || accessToken.startsWith('mock_')) {
+      // For mock tokens, use mock profile
+      if (accessToken.startsWith('mock_')) {
         if (!isCancelled) {
           setUser(createMockUserProfile());
+          setLoading(false);
+        }
+        return;
+      }
+
+      // Require backend URL for production
+      if (!BACKEND_URL) {
+        if (!isCancelled) {
+          setError('Backend URL not configured. Please set VITE_API_URL environment variable.');
+          setUser(null);
           setLoading(false);
         }
         return;
@@ -148,10 +158,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (err: any) {
         if (!isCancelled) {
-          // Fallback to mock profile on error
-          console.warn('Failed to load profile from backend, using mock:', err.message);
-          setUser(createMockUserProfile());
-          setError(null);
+          setError(err.message || 'Failed to load user profile');
+          setUser(null);
         }
       } finally {
         if (!isCancelled) {
