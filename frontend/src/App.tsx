@@ -24,10 +24,16 @@ function DashboardContent() {
 
   const accessToken = localStorage.getItem('spotify_access_token');
   const userId = localStorage.getItem('user_id');
-  const backendUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3001';
+  const backendUrl = import.meta.env.VITE_API_URL || '';
 
   const fetchRecommendations = useCallback(async () => {
     if (!accessToken) {
+      return;
+    }
+
+    // If no backend URL, don't fetch recommendations
+    if (!backendUrl) {
+      setRecError('Backend not configured. Please set VITE_API_URL environment variable.');
       return;
     }
 
@@ -58,6 +64,12 @@ function DashboardContent() {
 
     const track = recommendations.find((r) => r.id === trackId);
     if (!track) return;
+
+    // If no backend URL, skip feedback
+    if (!backendUrl) {
+      console.log('Backend not configured, skipping feedback');
+      return;
+    }
 
     try {
       await fetch(`${backendUrl}/api/feedback`, {
