@@ -193,12 +193,12 @@ class SupabaseDB {
       const id = Math.random().toString(36).substring(2, 15);
 
       const fallbackEmail = `spotify_${user.spotify_id}@spotify.local`;
-      const computedEmail =
-        typeof (user as any).email === 'string' && (user as any).email.trim().length > 0
-          ? (user as any).email.trim()
+      const emailRaw = (user as any)?.email as unknown;
+      const computedEmailRaw = typeof emailRaw === 'string' ? emailRaw : null;
+      const safeEmail =
+        computedEmailRaw && computedEmailRaw.trim().length > 0
+          ? computedEmailRaw.trim()
           : fallbackEmail;
-
-      const safeEmail = computedEmail || fallbackEmail;
 
       return {
         ...user,

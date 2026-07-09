@@ -1,14 +1,96 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import DiscoveryDial from './components/DiscoveryDial';
+import RecommendationCard from './components/RecommendationCard';
+
+interface Recommendation {
+  id: string;
+  name: string;
+  artists: string[];
+  albumName: string;
+  imageUrl?: string;
+  previewUrl?: string;
+  spotifyUrl: string;
+  discoveryScore: number;
+  explanation: string;
+}
 
 function DashboardContent() {
   const { user, logout, loading, error } = useAuth();
+  const [dialValue, setDialValue] = useState(50);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [isLoadingRecs, setIsLoadingRecs] = useState(false);
+  const [recError, setRecError] = useState<string | null>(null);
+
+  const accessToken = localStorage.getItem('spotify_access_token');
+  const userId = localStorage.getItem('user_id');
+  const backendUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3001';
+
+  const fetchRecommendations = useCallback(async () => {
+    if (!accessToken) {
+      return;
+    }
+
+    setIsLoadingRecs(true);
+    setRecError(null);
+
+    try {
+      const response = await fetch(
+        `${backendUrl}/api/recommendations?dial_value=${dialValue}&access_token=${accessToken}&limit=15`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch recommendations: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      setRecommendations(data.recommendations || []);
+    } catch (error: any) {
+      console.error('Error fetching recommendations:', error);
+      setRecError(error.message || 'Failed to load recommendations');
+    } finally {
+      setIsLoadingRecs(false);
+    }
+  }, [accessToken, dialValue, backendUrl]);
+
+  const handleFeedback = async (trackId: string, isLiked: boolean) => {
+    if (!userId || !recommendations) return;
+
+    const track = recommendations.find((r) => r.id === trackId);
+    if (!track) return;
+
+    try {
+      await fetch(`${backendUrl}/api/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          track_id: track.id,
+          track_name: track.name,
+          artists: track.artists,
+          dial_value: dialValue,
+          discovery_score: track.discoveryScore,
+          is_liked: isLiked,
+        }),
+      });
+    } catch (error) {
+      console.error('Error saving feedback:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (accessToken && userId) {
+      fetchRecommendations();
+    }
+  }, [dialValue, accessToken, userId, fetchRecommendations]);
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-spotify-green"></div>
-        <p className="mt-4 text-gray-400 font-medium">Syncing with Spotify...</p>
+        <p className="mt-4 text-gray-400 font-medium">Loading your profile...</p>
       </div>
     );
   }
@@ -17,13 +99,15 @@ function DashboardContent() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white px-4 text-center">
         <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-xl max-w-md">
-          <h2 className="text-xl font-bold text-red-400 mb-2">Sync Error</h2>
-          <p className="text-gray-300 mb-4">{error || 'Could not retrieve user session.'}</p>
+          <h2 className="text-xl font-bold text-red-400 mb-2">Connection Error</h2>
+          <p className="text-gray-300 mb-4">
+            {error || 'Could not connect to Spotify. Please try again or use the mock data option for testing.'}
+          </p>
           <button
             onClick={logout}
             className="px-4 py-2 bg-white text-black font-semibold rounded-full hover:bg-gray-200 transition"
           >
-            Go Back
+            Try Again
           </button>
         </div>
       </div>
@@ -33,53 +117,56 @@ function DashboardContent() {
   const { profile, topTracks, topArtists } = user;
 
   return (
-    <div className="min-h-screen bg-[#080808] text-white">
-      {/* Header / Navbar */}
-      <header className="border-b border-white/5 bg-black/40 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-green-500 to-emerald-400 flex items-center justify-center shadow-[0_0_15px_rgba(34,197,94,0.4)]">
-              <span className="text-black font-black text-sm">DD</span>
+    <>
+      <div className="min-h-screen bg-[#080808] text-white">
+        {/* Header / Navbar */}
+        <header className="border-b border-white/5 bg-black/40 backdrop-blur-md sticky top-0 z-50">
+          <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-green-500 to-emerald-400 flex items-center justify-center shadow-[0_0_15px_rgba(34,197,94,0.4)]">
+                <span className="text-black font-black text-sm">DD</span>
+              </div>
+              <span className="font-bold text-lg tracking-tight">Discovery Dial</span>
             </div>
-            <span className="font-bold text-lg tracking-tight">Discovery Dial</span>
-          </div>
 
-          <div className="flex items-center space-x-4">
-            <div className="hidden sm:flex items-center space-x-2 bg-white/5 border border-white/5 px-3 py-1.5 rounded-full">
-              {profile.profileImageUrl ? (
-                <img
-                  src={profile.profileImageUrl}
-                  alt={profile.displayName}
-                  className="h-6 w-6 rounded-full object-cover"
-                />
-              ) : (
-                <div className="h-6 w-6 rounded-full bg-spotify-green flex items-center justify-center text-xs text-black font-bold">
-                  {profile.displayName.charAt(0)}
-                </div>
-              )}
-              <span className="text-sm font-medium text-gray-300">{profile.displayName}</span>
+            <div className="flex items-center space-x-4">
+              <div className="hidden sm:flex items-center space-x-2 bg-white/5 border border-white/5 px-3 py-1.5 rounded-full">
+                {profile.profileImageUrl ? (
+                  <img
+                    src={profile.profileImageUrl}
+                    alt={profile.displayName}
+                    className="h-6 w-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-6 w-6 rounded-full bg-spotify-green flex items-center justify-center text-xs text-black font-bold">
+                    {profile.displayName.charAt(0)}
+                  </div>
+                )}
+                <span className="text-sm font-medium text-gray-300">{profile.displayName}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={logout}
+                  className="text-sm font-semibold text-gray-400 hover:text-white transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
             </div>
-            <button
-              onClick={logout}
-              className="text-sm font-semibold text-gray-400 hover:text-white transition-colors"
-            >
-              Sign Out
-            </button>
           </div>
-        </div>
-      </header>
+        </header>
 
       {/* Main Content Container */}
       <main className="max-w-6xl mx-auto px-6 py-10">
         {/* Welcome Section */}
         <section className="mb-12 relative overflow-hidden rounded-3xl bg-gradient-to-r from-neutral-900 to-neutral-950 border border-white/5 p-8 sm:p-10 flex flex-col md:flex-row md:items-center md:justify-between">
           <div className="relative z-10 max-w-xl">
-            <span className="text-xs uppercase font-extrabold tracking-widest text-spotify-green">Phase 2 Active</span>
+            <span className="text-xs uppercase font-extrabold tracking-widest text-spotify-green">Phase 3 Active</span>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mt-2 mb-3">
               Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">{profile.displayName}</span>!
             </h1>
             <p className="text-gray-400 leading-relaxed">
-              Your Spotify account is successfully connected. Below is the profile and listening data retrieved from the Spotify API. We will use this in Phase 3 to generate your Discovery Dial recommendations.
+              Your Discovery Dial is ready! Adjust the slider to control how familiar or obscure your recommendations are. The algorithm uses your top artists to find related music and scores each track based on discovery potential.
             </p>
           </div>
           <div className="mt-6 md:mt-0 flex items-center space-x-4 bg-white/5 p-4 rounded-2xl border border-white/5 relative z-10">
@@ -104,6 +191,67 @@ function DashboardContent() {
             </div>
           </div>
           <div className="absolute right-0 top-0 w-80 h-80 bg-spotify-green/5 rounded-full blur-[80px] pointer-events-none"></div>
+        </section>
+
+        {/* Discovery Dial Section */}
+        <section className="mb-8">
+          <DiscoveryDial value={dialValue} onChange={setDialValue} />
+        </section>
+
+        {/* Recommendations Section */}
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold tracking-tight flex items-center">
+              <span className="h-2 w-2 bg-spotify-green rounded-full mr-2.5 animate-pulse"></span>
+              Your Recommendations
+            </h2>
+            <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+              {recommendations.length} tracks
+            </span>
+          </div>
+
+          {isLoadingRecs ? (
+            <div className="flex flex-col items-center justify-center py-12 bg-neutral-900/30 border border-white/5 rounded-3xl">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-spotify-green"></div>
+              <p className="mt-4 text-gray-400 font-medium">Generating recommendations...</p>
+            </div>
+          ) : recError ? (
+            <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl">
+              <p className="text-red-400 text-center mb-4">{recError}</p>
+              <p className="text-gray-400 text-sm text-center mb-4">
+                This might be a temporary issue. Please try adjusting the dial or refresh the page.
+              </p>
+              <button
+                onClick={fetchRecommendations}
+                className="mx-auto block px-4 py-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500/30 transition"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : recommendations.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recommendations.map((rec) => (
+                <RecommendationCard
+                  key={rec.id}
+                  id={rec.id}
+                  name={rec.name}
+                  artists={rec.artists}
+                  albumName={rec.albumName}
+                  imageUrl={rec.imageUrl}
+                  previewUrl={rec.previewUrl}
+                  spotifyUrl={rec.spotifyUrl}
+                  discoveryScore={rec.discoveryScore}
+                  explanation={rec.explanation}
+                  onLike={(id) => handleFeedback(id, true)}
+                  onDislike={(id) => handleFeedback(id, false)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-neutral-900/30 border border-white/5 rounded-3xl p-12 text-center">
+              <p className="text-gray-400">Adjust the Discovery Dial to generate recommendations</p>
+            </div>
+          )}
         </section>
 
         {/* User Data Grids */}
@@ -216,26 +364,20 @@ function DashboardContent() {
             </div>
           </div>
         </div>
-
-        {/* Phase 3 Teaser */}
-        <section className="mt-12 bg-gradient-to-r from-emerald-950/20 to-teal-950/10 border border-emerald-900/20 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div className="mb-4 sm:mb-0">
-            <h4 className="font-bold text-green-400">Ready for the Recommendation Engine?</h4>
-            <p className="text-xs text-gray-400 mt-1">
-              Next, we will implement the Discovery Dial algorithm to score and suggest tracks based on these preferences!
-            </p>
-          </div>
-          <button className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-black font-bold rounded-full text-xs transition duration-300 self-start sm:self-auto shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-            Proceed to Phase 3
-          </button>
-        </section>
       </main>
-    </div>
+      </div>
+    </>
   );
 }
 
 function LoginScreen() {
-  const { login } = useAuth();
+  const { login, setSession } = useAuth();
+
+  const handleMockLogin = () => {
+    console.log('[LoginScreen] Mock login clicked, calling setSession...');
+    setSession('mock_access_token_test', 'mock_spotify_id', 'mock_user_id');
+    console.log('[LoginScreen] setSession called with token: mock_access_token_test...');
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white px-6 relative overflow-hidden">
@@ -271,12 +413,18 @@ function LoginScreen() {
             </svg>
             <span>Connect with Spotify</span>
           </button>
+          <button
+            onClick={handleMockLogin}
+            className="px-8 py-4 bg-white/10 text-white font-bold rounded-full flex items-center justify-center space-x-3 hover:bg-white/20 transition w-full sm:w-auto border border-white/20"
+          >
+            <span>Test with Mock Data</span>
+          </button>
         </div>
 
         <div className="mt-14 text-xs text-gray-500 max-w-sm mx-auto leading-relaxed border-t border-white/5 pt-6">
-          <p className="font-semibold text-gray-400">Developer Testing Mode Available</p>
+          <p className="font-semibold text-gray-400">Phase 3 Testing Mode</p>
           <p className="mt-1">
-            If API keys are not configured in the backend, clicking connect will launch a mock developer dashboard with simulated data.
+            Use "Test with Mock Data" to explore the Discovery Dial and recommendation features without Spotify authentication.
           </p>
         </div>
       </div>

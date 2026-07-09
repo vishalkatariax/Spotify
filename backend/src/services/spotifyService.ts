@@ -5,7 +5,8 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
-const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || 'http://127.0.0.1:5173/callback';
+const BACKEND_URL = process.env.BACKEND_URL || `http://127.0.0.1:${process.env.BACKEND_PORT || 3001}`;
+export const DEFAULT_REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || `${BACKEND_URL}/api/auth/callback`;
 
 export interface SpotifyTokens {
   accessToken: string;
@@ -70,7 +71,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3): P
 /**
  * Exchange authorization code for Spotify tokens.
  */
-export async function exchangeCodeForTokens(code: string): Promise<SpotifyTokens> {
+export async function exchangeCodeForTokens(code: string, redirectUri?: string): Promise<SpotifyTokens> {
   if (isMockMode) {
     return {
       accessToken: 'mock_access_token_' + Math.random().toString(36).substring(7),
@@ -88,7 +89,7 @@ export async function exchangeCodeForTokens(code: string): Promise<SpotifyTokens
     body: new URLSearchParams({
       grant_type: 'authorization_code',
       code: code,
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: redirectUri || DEFAULT_REDIRECT_URI,
     }),
   });
 

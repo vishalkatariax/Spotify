@@ -71,7 +71,7 @@ router.get('/callback', async (req, res) => {
     const redirectUri = getBackendRedirectUri(req);
     console.log('Spotify callback exchange redirect_uri:', redirectUri);
     // 1. Exchange code for Spotify tokens
-    const tokens = await exchangeCodeForTokens(code, redirectUri);
+    const tokens = await exchangeCodeForTokens(code);
 
     // 2. Fetch user profile from Spotify
     const spotifyProfile = await fetchSpotifyProfile(tokens.accessToken);
@@ -81,8 +81,8 @@ router.get('/callback', async (req, res) => {
 
     const fallbackEmail = `spotify_${spotifyProfile.id}@spotify.local`;
 
-    const computedEmailRaw =
-      typeof spotifyProfile.email === 'string' ? spotifyProfile.email : null;
+    const emailRaw = (spotifyProfile as any)?.email as unknown;
+    const computedEmailRaw = typeof emailRaw === 'string' ? emailRaw : null;
 
     // Supabase column `users.email` is NOT NULL, so force a non-empty string.
     const computedEmail =
@@ -90,6 +90,7 @@ router.get('/callback', async (req, res) => {
         ? computedEmailRaw.trim()
         : fallbackEmail;
 
+    // Absolute last resort: never allow null/blank.
     const safeEmail =
       typeof computedEmail === 'string' && computedEmail.trim().length > 0
         ? computedEmail
@@ -116,23 +117,28 @@ router.get('/callback', async (req, res) => {
       safeEmailIsEmpty: typeof safeEmail === 'string' && safeEmail.trim().length === 0,
     });
 
-    if (!userData.email) {
-      console.warn('Spotify callback: email missing from Spotify profile, using empty string.', {
+    if (!userData.email || (typeof userData.email === 'string' && userData.email.trim().length === 0)) {
+      console.warn('Spotify callback: computed email invalid; forcing fallback.', {
         spotifyProfile: {
           id: spotifyProfile.id,
           displayName: spotifyProfile.displayName,
           emailRaw: (spotifyProfile as any).email,
         },
+        fallbackEmail,
       });
+      userData.email = fallbackEmail;
     }
 
     try {
       if (user) {
-        user = await db.updateUser(user.id, userData as any);
+        // db.updateUser signature: (id: string, user: Partial<Omit<DBUser,'id'>>)
+        user = await db.updateUser(user.id, userData);
       } else {
+        // db.createUser signature: (user: Omit<DBUser,'id'>)
         user = await db.createUser(userData);
       }
     } catch (dbError: any) {
+
       console.error('DB create/update user failed:', {
         message: dbError?.message,
         code: dbError?.code,

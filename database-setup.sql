@@ -85,36 +85,54 @@ END $$;
 -- Note: Intentionally permissive for fastest unblock.
 DO $$
 BEGIN
-  -- Create a permissive INSERT policy for authenticated role
-  -- (non-destructive: won't drop existing policies).
+  -- Allow INSERT into public.users so the OAuth callback can create/update user rows.
+  -- Important: when using the Supabase *anon* key in server-side code,
+  -- auth.uid() is NULL, so policies must NOT depend on auth.uid().
+
+  -- authenticated role (if client sends/uses an authenticated JWT)
   IF NOT EXISTS (
     SELECT 1
     FROM pg_policies
     WHERE schemaname = 'public'
       AND tablename = 'users'
-      AND policyname = 'Users can insert their own record (authenticated)'
+      AND policyname = 'Users can insert into users (authenticated)'
   ) THEN
-    CREATE POLICY "Users can insert their own record (authenticated)" ON users
+    CREATE POLICY "Users can insert into users (authenticated)" ON users
       FOR INSERT
       TO authenticated
       WITH CHECK (true);
   END IF;
 
-  -- Also allow INSERT for role {public} because auth.uid() is NULL in DB.
-  -- Fastest unblock to stop the OAuth redirect loop.
+  -- anon role (most common when using SUPABASE_ANON_KEY)
   IF NOT EXISTS (
     SELECT 1
     FROM pg_policies
     WHERE schemaname = 'public'
       AND tablename = 'users'
-      AND policyname = 'Users can insert their own record (public)'
+      AND policyname = 'Users can insert into users (anon)'
   ) THEN
-    CREATE POLICY "Users can insert their own record (public)" ON users
+    CREATE POLICY "Users can insert into users (anon)" ON users
+      FOR INSERT
+      TO anon
+      WITH CHECK (true);
+  END IF;
+
+  -- public role alias (some setups use `public` instead of `anon`)
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'users'
+      AND policyname = 'Users can insert into users (public)'
+  ) THEN
+    CREATE POLICY "Users can insert into users (public)" ON users
       FOR INSERT
       TO public
       WITH CHECK (true);
   END IF;
 END $$;
+
+
 
 DO $$
 BEGIN
