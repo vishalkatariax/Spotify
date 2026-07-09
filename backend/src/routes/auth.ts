@@ -128,7 +128,7 @@ router.get('/callback', async (req, res) => {
 
     try {
       if (user) {
-        user = await db.updateUser(user.id, userData);
+        user = await db.updateUser(user.id, userData as any);
       } else {
         user = await db.createUser(userData);
       }
