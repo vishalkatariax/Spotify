@@ -1,14 +1,35 @@
-import { Router } from 'express';
-import { exchangeCodeForTokens, refreshAccessToken, fetchSpotifyProfile, isMockMode } from '../services/spotifyService';
+import { Router, type Request } from 'express';
+import {
+  exchangeCodeForTokens,
+  refreshAccessToken,
+  fetchSpotifyProfile,
+  isMockMode,
+} from '../services/spotifyService';
 import { db } from '../config/db';
 import { encrypt, decrypt } from '../utils/tokenManager';
 
 const router = Router();
 
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
-const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || 'http://127.0.0.1:5173/callback';
-const SCOPES = process.env.SPOTIFY_SCOPES || 'user-top-read,user-read-recently-played,playlist-modify-public,playlist-modify-private';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://127.0.0.1:5173';
+
+// Render is separate from Vercel; keep frontend URL clean.
+// If not set in env, fall back to localhost for dev.
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+const SCOPES =
+  process.env.SPOTIFY_SCOPES ||
+  'user-top-read,user-read-recently-played,playlist-modify-public,playlist-modify-private';
+
+function getBackendRedirectUri(req: Request) {
+  // Prefer explicit env var in production; Spotify requires an exact match.
+  if (process.env.SPOTIFY_REDIRECT_URI) {
+    return process.env.SPOTIFY_REDIRECT_URI;
+  }
+
+  // Local/dev fallback: derive from current request.
+  const defaultRedirectUri = `${req.protocol}://${req.get('host')}/api/auth/callback`;
+  return defaultRedirectUri;
+}
 
 /**
  * GET /api/auth/login
@@ -22,13 +43,15 @@ router.get('/login', (req, res) => {
   }
 
   const state = Math.random().toString(36).substring(2, 15);
+  const redirectUri = getBackendRedirectUri(req);
   const authorizeUrl = `https://accounts.spotify.com/authorize?${new URLSearchParams({
     response_type: 'code',
     client_id: CLIENT_ID || '',
     scope: SCOPES,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: redirectUri,
     state: state,
   }).toString()}`;
+  console.log('Spotify login redirect_uri:', redirectUri);
 
   res.redirect(authorizeUrl);
 });
@@ -45,8 +68,10 @@ router.get('/callback', async (req, res) => {
   }
 
   try {
+    const redirectUri = getBackendRedirectUri(req);
+    console.log('Spotify callback exchange redirect_uri:', redirectUri);
     // 1. Exchange code for Spotify tokens
-    const tokens = await exchangeCodeForTokens(code);
+    const tokens = await exchangeCodeForTokens(code, redirectUri);
 
     // 2. Fetch user profile from Spotify
     const spotifyProfile = await fetchSpotifyProfile(tokens.accessToken);
@@ -54,18 +79,70 @@ router.get('/callback', async (req, res) => {
     // 3. Check if user already exists in DB, otherwise create
     let user = await db.getUserBySpotifyId(spotifyProfile.id);
 
+    const fallbackEmail = `spotify_${spotifyProfile.id}@spotify.local`;
+
+    const computedEmailRaw =
+      typeof spotifyProfile.email === 'string' ? spotifyProfile.email : null;
+
+    // Supabase column `users.email` is NOT NULL, so force a non-empty string.
+    const computedEmail =
+      computedEmailRaw && computedEmailRaw.trim().length > 0
+        ? computedEmailRaw.trim()
+        : fallbackEmail;
+
+    const safeEmail =
+      typeof computedEmail === 'string' && computedEmail.trim().length > 0
+        ? computedEmail
+        : fallbackEmail;
+
     const userData = {
       spotify_id: spotifyProfile.id,
       display_name: spotifyProfile.displayName,
-      email: spotifyProfile.email,
+      // DB column `public.users.email` is NOT NULL, so always provide a value.
+      email: safeEmail,
       profile_image_url: spotifyProfile.profileImageUrl,
       country: spotifyProfile.country,
     };
 
-    if (user) {
-      user = await db.updateUser(user.id, userData);
-    } else {
-      user = await db.createUser(userData);
+    // Diagnostics: confirm what we are actually sending to Supabase
+    console.log('Spotify callback: computed user email', {
+      spotifyEmailRaw: (spotifyProfile as any).email,
+      computedEmail,
+      safeEmail,
+      fallbackEmail,
+      spotifyId: spotifyProfile.id,
+      emailType: typeof (spotifyProfile as any).email,
+      safeEmailIsNull: safeEmail == null,
+      safeEmailIsEmpty: typeof safeEmail === 'string' && safeEmail.trim().length === 0,
+    });
+
+    if (!userData.email) {
+      console.warn('Spotify callback: email missing from Spotify profile, using empty string.', {
+        spotifyProfile: {
+          id: spotifyProfile.id,
+          displayName: spotifyProfile.displayName,
+          emailRaw: (spotifyProfile as any).email,
+        },
+      });
+    }
+
+    try {
+      if (user) {
+        user = await db.updateUser(user.id, userData);
+      } else {
+        user = await db.createUser(userData);
+      }
+    } catch (dbError: any) {
+      console.error('DB create/update user failed:', {
+        message: dbError?.message,
+        code: dbError?.code,
+        details: dbError?.details,
+        hint: dbError?.hint,
+        // best-effort: many postgres/supabase errors include these
+        table: dbError?.table,
+        constraint: dbError?.constraint,
+      });
+      throw dbError;
     }
 
     // 4. Encrypt and save tokens in DB
