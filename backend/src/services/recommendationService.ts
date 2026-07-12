@@ -235,11 +235,12 @@ async function fetchArtistTopTracks(accessToken: string, artistId: string): Prom
  */
 function calculateGenreMatch(seedGenres: string[], relatedGenres: string[]): number {
   if (!seedGenres.length || !relatedGenres.length) return 0;
-  
+
   let matchCount = 0;
-  const normalizedSeedGenres = seedGenres.map(g => g.toLowerCase());
-  const normalizedRelatedGenres = relatedGenres.map(g => g.toLowerCase());
-  
+  // Filter out undefined values and convert to lowercase
+  const normalizedSeedGenres = seedGenres.filter(g => g).map(g => g.toLowerCase());
+  const normalizedRelatedGenres = relatedGenres.filter(g => g).map(g => g.toLowerCase());
+
   for (const seedGenre of normalizedSeedGenres) {
     for (const relatedGenre of normalizedRelatedGenres) {
       // Exact match
@@ -252,9 +253,9 @@ function calculateGenreMatch(seedGenres: string[], relatedGenres: string[]): num
       }
     }
   }
-  
+
   // Normalize to 0-1 range
-  return Math.min(1, matchCount / Math.max(seedGenres.length, 1));
+  return Math.min(1, matchCount / Math.max(normalizedSeedGenres.length, 1));
 }
 
 /**
