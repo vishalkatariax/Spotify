@@ -41,13 +41,21 @@ export interface SpotifyArtist {
   spotifyUrl: string;
 }
 
-// Check if we are running in Mock Mode (no valid keys configured)
-export const isMockMode = !CLIENT_ID || CLIENT_ID === 'your_spotify_client_id' || !CLIENT_SECRET || CLIENT_SECRET === 'your_spotify_client_secret';
+// Check if we are running in Mock Mode (no valid keys configured or forced)
+const FORCE_MOCK_MODE = process.env.FORCE_MOCK_MODE === 'true';
+export const isMockMode = FORCE_MOCK_MODE || !CLIENT_ID || CLIENT_ID === 'your_spotify_client_id' || !CLIENT_SECRET || CLIENT_SECRET === 'your_spotify_client_secret';
 
 if (isMockMode) {
-  console.log('Spotify Service: RUNNING IN MOCK MODE. No Spotify API credentials found in environment.');
+  console.log('Spotify Service: RUNNING IN MOCK MODE.');
+  if (FORCE_MOCK_MODE) {
+    console.log('Spotify Service: Mock mode forced via FORCE_MOCK_MODE=true environment variable.');
+  } else {
+    console.log('Spotify Service: No valid Spotify API credentials found in environment.');
+  }
 } else {
   console.log('Spotify Service: Configured for real Spotify API.');
+  console.log('Spotify Service: If you see repeated 403 errors, your Spotify credentials may be invalid or expired.');
+  console.log('Spotify Service: To force mock mode, set FORCE_MOCK_MODE=true environment variable.');
 }
 
 /**
@@ -63,6 +71,16 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3): P
     console.warn(`[Spotify API] Rate limit hit (429). Retrying in ${waitTime}ms...`);
     await new Promise((resolve) => setTimeout(resolve, waitTime));
     return fetchWithRetry(url, options, retries - 1);
+  }
+
+  // Log 403 errors for debugging
+  if (response.status === 403) {
+    console.error(`[Spotify API] 403 Forbidden error for URL: ${url}`);
+    console.error(`[Spotify API] Client ID configured: ${CLIENT_ID ? 'Yes' : 'No'}`);
+    console.error(`[Spotify API] Client Secret configured: ${CLIENT_SECRET ? 'Yes' : 'No'}`);
+    if (CLIENT_ID) {
+      console.error(`[Spotify API] Client ID starts with: ${CLIENT_ID.substring(0, 8)}...`);
+    }
   }
 
   return response;
