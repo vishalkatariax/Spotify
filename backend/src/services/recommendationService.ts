@@ -186,7 +186,7 @@ async function fetchArtistTopTracks(accessToken: string, artistId: string): Prom
     console.warn('Falling back to mock data due to Spotify API error');
     const mockTracks: SpotifyTrack[] = [
       {
-        id: 'track1',
+        id: `track1_${artistId}`,
         name: 'Kabhi Kabhi Aditi',
         artists: ['A.R. Rahman'],
         albumName: 'Jaane Tu... Ya Jaane Na',
@@ -194,13 +194,21 @@ async function fetchArtistTopTracks(accessToken: string, artistId: string): Prom
         spotifyUrl: 'https://open.spotify.com/track/0U01AXKW4h78j4564357',
       },
       {
-        id: 'track2',
+        id: `track2_${artistId}`,
         name: 'Tum Hi Ho',
         artists: ['Arijit Singh'],
         albumName: 'Aashiqui 2',
         imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=256&h=256&q=80',
         spotifyUrl: 'https://open.spotify.com/track/698eCG4v436OI86ISg6DQ6',
       },
+      {
+        id: `track3_${artistId}`,
+        name: 'Chaiyya Chaiyya',
+        artists: ['A.R. Rahman'],
+        albumName: 'Dil Se',
+        imageUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=256&h=256&q=80',
+        spotifyUrl: 'https://open.spotify.com/track/3m6dTq6p5rW8J8ZyQyQyQy',
+      }
     ];
     return mockTracks;
   }
