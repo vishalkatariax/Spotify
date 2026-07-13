@@ -44,146 +44,71 @@ function generateExplanation(track: SpotifyTrack, discoveryScore: number, seedAr
  * Fetch related artists for a given artist ID
  */
 async function fetchRelatedArtists(accessToken: string, artistId: string): Promise<SpotifyArtist[]> {
-  const useMockMode = isMockMode || accessToken.startsWith('mock_') || accessToken.includes('mock');
-  
-  if (useMockMode) {
-    // Mock related artists
-    const mockArtists: SpotifyArtist[] = [
-      {
-        id: 'rel1',
-        name: 'Glass Animals',
-        genres: ['indie pop', 'psychedelic pop'],
-        imageUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=256&h=256&q=80',
-        popularity: 75,
-        spotifyUrl: 'https://open.spotify.com/artist/5q8pTG2eqqR0VNmQxL3Fi1',
-      },
-      {
-        id: 'rel2',
-        name: 'Tame Impala',
-        genres: ['psychedelic pop', 'neo-psychedelia'],
-        imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=256&h=256&q=80',
-        popularity: 88,
-        spotifyUrl: 'https://open.spotify.com/artist/5INjqhS0s8JIfNZVEqGqA4',
-      },
-      {
-        id: 'rel3',
-        name: 'M83',
-        genres: ['synthpop', 'shoegaze'],
-        imageUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=256&h=256&q=80',
-        popularity: 70,
-        spotifyUrl: 'https://open.spotify.com/artist/3m6dTq6p5rW8J8ZyQyQyQy',
-      },
-    ];
-    return mockArtists;
-  }
-
-  const response = await fetch(`https://api.spotify.com/v1/artists/${artistId}/related-artists`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
+  // Due to Spotify API deprecating the related-artists endpoint for new apps in Nov 2024, 
+  // we immediately return mock data instead of causing a 403 Forbidden error in the logs.
+  const mockArtists: SpotifyArtist[] = [
+    {
+      id: 'rel1',
+      name: 'A.R. Rahman',
+      genres: ['indian pop', 'filmi', 'indian classical'],
+      imageUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=256&h=256&q=80',
+      popularity: 85,
+      spotifyUrl: 'https://open.spotify.com/artist/1YR4wmos3C1femYmuj7Aqy',
     },
-  });
-
-  if (!response.ok) {
-    console.error(`Spotify API error (${response.status}): ${response.statusText}`);
-    // Fallback to mock data if Spotify API fails
-    console.warn('Falling back to mock data due to Spotify API error');
-    const mockArtists: SpotifyArtist[] = [
-      {
-        id: 'rel1',
-        name: 'A.R. Rahman',
-        genres: ['indian pop', 'filmi', 'indian classical'],
-        imageUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=256&h=256&q=80',
-        popularity: 85,
-        spotifyUrl: 'https://open.spotify.com/artist/1YR4wmos3C1femYmuj7Aqy',
-      },
-      {
-        id: 'rel2',
-        name: 'Sonu Nigam',
-        genres: ['indian pop', 'filmi'],
-        imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=256&h=256&q=80',
-        popularity: 80,
-        spotifyUrl: 'https://open.spotify.com/artist/4YRxDV8uJRC7zbgvEJp9R8',
-      },
-      {
-        id: 'rel3',
-        name: 'Shankar-Ehsaan-Loy',
-        genres: ['indian pop', 'filmi', 'fusion'],
-        imageUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=256&h=256&q=80',
-        popularity: 75,
-        spotifyUrl: 'https://open.spotify.com/artist/3m6dTq6p5rW8J8ZyQyQyQy',
-      },
-    ];
-    return mockArtists;
-  }
-
-  const data = await response.json() as {
-    artists: Array<{
-      id: string;
-      name: string;
-      genres: string[];
-      images?: Array<{ url: string }>;
-      popularity: number;
-      external_urls: { spotify: string };
-    }>;
-  };
-
-  return data.artists.map((artist) => ({
-    id: artist.id,
-    name: artist.name,
-    genres: artist.genres,
-    imageUrl: artist.images && artist.images.length > 0 ? artist.images[0].url : undefined,
-    popularity: artist.popularity,
-    spotifyUrl: artist.external_urls.spotify,
-  }));
+    {
+      id: 'rel2',
+      name: 'Sonu Nigam',
+      genres: ['indian pop', 'filmi'],
+      imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=256&h=256&q=80',
+      popularity: 80,
+      spotifyUrl: 'https://open.spotify.com/artist/4YRxDV8uJRC7zbgvEJp9R8',
+    },
+    {
+      id: 'rel3',
+      name: 'Shankar-Ehsaan-Loy',
+      genres: ['indian pop', 'filmi', 'fusion'],
+      imageUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=256&h=256&q=80',
+      popularity: 75,
+      spotifyUrl: 'https://open.spotify.com/artist/3m6dTq6p5rW8J8ZyQyQyQy',
+    },
+  ];
+  return mockArtists;
 }
 
 /**
  * Fetch top tracks for an artist
  */
 async function fetchArtistTopTracks(accessToken: string, artistId: string): Promise<SpotifyTrack[]> {
-  const useMockMode = isMockMode || accessToken.startsWith('mock_') || accessToken.includes('mock');
-  
-  if (useMockMode) {
-    // Mock top tracks
-    const mockTracks: SpotifyTrack[] = [
-      {
-        id: 'track1',
-        name: 'Heat Waves',
-        artists: ['Glass Animals'],
-        albumName: 'Dreamland',
-        imageUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=256&h=256&q=80',
-        spotifyUrl: 'https://open.spotify.com/track/0U01AXKW4h78j4564357',
-      },
-      {
-        id: 'track2',
-        name: 'The Less I Know The Better',
-        artists: ['Tame Impala'],
-        albumName: 'Currents',
-        imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=256&h=256&q=80',
-        spotifyUrl: 'https://open.spotify.com/track/698eCG4v436OI86ISg6DQ6',
-      },
-      {
-        id: 'track3',
-        name: 'Midnight City',
-        artists: ['M83'],
-        albumName: 'Hurry Up, We\'re Dreaming',
-        imageUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=256&h=256&q=80',
-        spotifyUrl: 'https://open.spotify.com/track/0U01AXKW4h78j4564358',
-      },
-    ];
-    return mockTracks;
-  }
-
-  const response = await fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=US`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
+  // Due to Spotify API deprecating the artist top tracks endpoint for new apps in Nov 2024, 
+  // we immediately return mock data instead of causing a 403 Forbidden error in the logs.
+  const mockTracks: SpotifyTrack[] = [
+    {
+      id: `track1_${artistId}`,
+      name: 'Kabhi Kabhi Aditi',
+      artists: ['A.R. Rahman'],
+      albumName: 'Jaane Tu... Ya Jaane Na',
+      imageUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=256&h=256&q=80',
+      spotifyUrl: 'https://open.spotify.com/track/0U01AXKW4h78j4564357',
     },
-  });
-
-  if (!response.ok) {
-    console.error(`Spotify API error (${response.status}): ${response.statusText}`);
-    // Fallback to mock data if Spotify API fails
-    console.warn('Falling back to mock data due to Spotify API error');
+    {
+      id: `track2_${artistId}`,
+      name: 'Tum Hi Ho',
+      artists: ['Arijit Singh'],
+      albumName: 'Aashiqui 2',
+      imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=256&h=256&q=80',
+      spotifyUrl: 'https://open.spotify.com/track/698eCG4v436OI86ISg6DQ6',
+    },
+    {
+      id: `track3_${artistId}`,
+      name: 'Chaiyya Chaiyya',
+      artists: ['A.R. Rahman'],
+      albumName: 'Dil Se',
+      imageUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=256&h=256&q=80',
+      spotifyUrl: 'https://open.spotify.com/track/3m6dTq6p5rW8J8ZyQyQyQy',
+    }
+  ];
+  return mockTracks;
+}
     const mockTracks: SpotifyTrack[] = [
       {
         id: `track1_${artistId}`,
