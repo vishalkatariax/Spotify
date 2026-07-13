@@ -79,7 +79,7 @@ async function fetchRelatedArtists(accessToken: string, artistId: string): Promi
  * Fetch top tracks for an artist
  */
 async function fetchArtistTopTracks(accessToken: string, artistId: string): Promise<SpotifyTrack[]> {
-  // Due to Spotify API deprecating the artist top tracks endpoint for new apps in Nov 2024, 
+  // Due to Spotify API deprecating the artist top tracks endpoint for new apps in Nov 2024,
   // we immediately return mock data instead of causing a 403 Forbidden error in the logs.
   const mockTracks: SpotifyTrack[] = [
     {
@@ -108,59 +108,6 @@ async function fetchArtistTopTracks(accessToken: string, artistId: string): Prom
     }
   ];
   return mockTracks;
-}
-    const mockTracks: SpotifyTrack[] = [
-      {
-        id: `track1_${artistId}`,
-        name: 'Kabhi Kabhi Aditi',
-        artists: ['A.R. Rahman'],
-        albumName: 'Jaane Tu... Ya Jaane Na',
-        imageUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=256&h=256&q=80',
-        spotifyUrl: 'https://open.spotify.com/track/0U01AXKW4h78j4564357',
-      },
-      {
-        id: `track2_${artistId}`,
-        name: 'Tum Hi Ho',
-        artists: ['Arijit Singh'],
-        albumName: 'Aashiqui 2',
-        imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=256&h=256&q=80',
-        spotifyUrl: 'https://open.spotify.com/track/698eCG4v436OI86ISg6DQ6',
-      },
-      {
-        id: `track3_${artistId}`,
-        name: 'Chaiyya Chaiyya',
-        artists: ['A.R. Rahman'],
-        albumName: 'Dil Se',
-        imageUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=256&h=256&q=80',
-        spotifyUrl: 'https://open.spotify.com/track/3m6dTq6p5rW8J8ZyQyQyQy',
-      }
-    ];
-    return mockTracks;
-  }
-
-  const data = await response.json() as {
-    tracks: Array<{
-      id: string;
-      name: string;
-      artists: Array<{ name: string }>;
-      album: {
-        name: string;
-        images?: Array<{ url: string }>;
-      };
-      preview_url?: string;
-      external_urls: { spotify: string };
-    }>;
-  };
-
-  return data.tracks.map((track) => ({
-    id: track.id,
-    name: track.name,
-    artists: track.artists.map((a) => a.name),
-    albumName: track.album.name,
-    imageUrl: track.album.images && track.album.images.length > 0 ? track.album.images[0].url : undefined,
-    previewUrl: track.preview_url || undefined,
-    spotifyUrl: track.external_urls.spotify,
-  }));
 }
 
 /**
