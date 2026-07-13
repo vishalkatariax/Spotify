@@ -36,13 +36,24 @@ function getBackendRedirectUri(req: Request) {
  * Redirects the user to Spotify Authorization or immediately mock logs in
  */
 router.get('/login', (req, res) => {
+  const returnTo = req.query.return_to as string;
+  let frontendUrl = FRONTEND_URL;
+  if (returnTo && (returnTo.endsWith('.vercel.app') || returnTo === 'http://localhost:5173')) {
+    frontendUrl = returnTo;
+  }
+
   if (isMockMode) {
     // In mock mode, redirect immediately back to the callback page with a mock code
-    const redirectUrl = `${FRONTEND_URL}/callback?code=mock_authorization_code_12345`;
+    const redirectUrl = `${frontendUrl}/callback?code=mock_authorization_code_12345`;
     return res.redirect(redirectUrl);
   }
 
-  const state = Math.random().toString(36).substring(2, 15);
+  const stateObj = {
+    nonce: Math.random().toString(36).substring(2, 15),
+    returnTo: frontendUrl
+  };
+  const state = Buffer.from(JSON.stringify(stateObj)).toString('base64');
+  
   const redirectUri = getBackendRedirectUri(req);
   const authorizeUrl = `https://accounts.spotify.com/authorize?${new URLSearchParams({
     response_type: 'code',
@@ -62,9 +73,22 @@ router.get('/login', (req, res) => {
  */
 router.get('/callback', async (req, res) => {
   const code = req.query.code as string;
+  const state = req.query.state as string;
+
+  let frontendUrl = FRONTEND_URL;
+  if (state) {
+    try {
+      const stateObj = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
+      if (stateObj.returnTo && (stateObj.returnTo.endsWith('.vercel.app') || stateObj.returnTo === 'http://localhost:5173')) {
+        frontendUrl = stateObj.returnTo;
+      }
+    } catch (e) {
+      console.error('Failed to parse state:', e);
+    }
+  }
 
   if (!code) {
-    return res.redirect(`${FRONTEND_URL}/?error=no_code_provided`);
+    return res.redirect(`${frontendUrl}/?error=no_code_provided`);
   }
 
   try {
@@ -163,7 +187,7 @@ router.get('/callback', async (req, res) => {
 
     // 5. Redirect back to frontend callback page with tokens to initialize state
     // For local MVP ease of use, we pass user ID and access token directly in query parameters
-    const redirectUrl = `${FRONTEND_URL}/callback?${new URLSearchParams({
+    const redirectUrl = `${frontendUrl}/callback?${new URLSearchParams({
       status: 'success',
       access_token: tokens.accessToken,
       spotify_id: spotifyProfile.id,
@@ -173,7 +197,7 @@ router.get('/callback', async (req, res) => {
     res.redirect(redirectUrl);
   } catch (error: any) {
     console.error('OAuth Callback Error:', error);
-    res.redirect(`${FRONTEND_URL}/?error=${encodeURIComponent(error.message || 'auth_failed')}`);
+    res.redirect(`${frontendUrl}/?error=${encodeURIComponent(error.message || 'auth_failed')}`);
   }
 });
 

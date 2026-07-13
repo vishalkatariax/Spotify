@@ -176,7 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [accessToken, BACKEND_URL]);
 
   const login = () => {
-    window.location.href = `${BACKEND_URL}/api/auth/login`;
+    window.location.href = `${BACKEND_URL}/api/auth/login?return_to=${encodeURIComponent(window.location.origin)}`;
   };
 
   const logout = () => {

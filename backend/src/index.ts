@@ -30,6 +30,12 @@ app.use(cors({
       return;
     }
 
+    // Allow any Vercel preview URL
+    if (origin.endsWith('.vercel.app')) {
+      callback(null, true);
+      return;
+    }
+
     if (!frontendUrl) {
       console.warn(`FRONTEND_URL is not configured; allowing origin ${origin} for CORS.`);
       callback(null, true);
