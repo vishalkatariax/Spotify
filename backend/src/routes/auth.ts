@@ -18,7 +18,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 const SCOPES =
   process.env.SPOTIFY_SCOPES ||
-  'user-top-read,user-read-recently-played,playlist-modify-public,playlist-modify-private';
+  'user-read-email,user-top-read,user-read-recently-played,playlist-modify-public,playlist-modify-private';
 
 function getBackendRedirectUri(req: Request) {
   // Prefer explicit env var in production; Spotify requires an exact match.
