@@ -26,6 +26,9 @@ function DashboardContent() {
   const userId = localStorage.getItem('user_id');
   const backendUrl = import.meta.env.VITE_API_URL;
 
+  // Log backend URL for debugging
+  console.log('App: backendUrl:', backendUrl || 'NOT CONFIGURED');
+
   const fetchRecommendations = useCallback(async () => {
     if (!accessToken) {
       return;

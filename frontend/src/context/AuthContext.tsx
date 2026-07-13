@@ -49,6 +49,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const BACKEND_URL = import.meta.env.VITE_API_URL;
 
+// Log backend URL for debugging
+console.log('AuthContext: BACKEND_URL:', BACKEND_URL || 'NOT CONFIGURED');
+
 function createMockUserProfile(): FullUserProfile {
   return {
     profile: {
