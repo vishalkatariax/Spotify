@@ -357,7 +357,7 @@ function DashboardContent() {
                         {artist.name}
                       </h4>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {artist.genres.slice(0, 2).map((g) => (
+                        {(artist.genres || []).slice(0, 2).map((g) => (
                           <span
                             key={g}
                             className="text-[9px] font-semibold bg-white/5 px-2 py-0.5 rounded-full text-gray-400 border border-white/5"

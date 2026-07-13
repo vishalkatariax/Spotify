@@ -114,9 +114,9 @@ function CreatePlaylistModal({ isOpen, onClose, selectedTracks, onPlaylistCreate
                   {selectedTracks.length} Track{selectedTracks.length !== 1 ? 's' : ''} Selected
                 </p>
                 <div className="space-y-1 max-h-24 overflow-y-auto">
-                  {selectedTracks.slice(0, 5).map((track) => (
+                  {(selectedTracks || []).slice(0, 5).map((track) => (
                     <div key={track.id} className="text-sm text-gray-300 truncate">
-                      • {track.name} - {track.artists.join(', ')}
+                      • {track.name} - {(track.artists || []).join(', ')}
                     </div>
                   ))}
                   {selectedTracks.length > 5 && (
