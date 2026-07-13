@@ -30,6 +30,7 @@ export default function RecommendationCard({
   const [isPlaying, setIsPlaying] = useState(false);
   const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
+  const artistNames = Array.isArray(artists) ? artists.filter((artist) => typeof artist === 'string' && artist.trim().length > 0) : [];
 
   const handlePlayPreview = () => {
     if (previewUrl) {
@@ -109,7 +110,9 @@ export default function RecommendationCard({
               <h4 className="font-bold text-sm truncate group-hover:text-spotify-green transition-colors">
                 {name}
               </h4>
-              <p className="text-xs text-gray-400 truncate mt-0.5">{artists.join(', ')}</p>
+              <p className="text-xs text-gray-400 truncate mt-0.5">
+                {artistNames.length > 0 ? artistNames.join(', ') : 'Unknown artist'}
+              </p>
               <p className="text-xs text-gray-500 truncate mt-0.5">{albumName}</p>
             </div>
             

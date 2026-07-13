@@ -52,6 +52,79 @@ const BACKEND_URL = import.meta.env.VITE_API_URL;
 // Log backend URL for debugging
 console.log('AuthContext: BACKEND_URL:', BACKEND_URL || 'NOT CONFIGURED');
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function normalizeString(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function normalizeOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
+function normalizeTrack(value: unknown, index: number): SpotifyTrack | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return {
+    id: normalizeString(value.id, `track-${index}`),
+    name: normalizeString(value.name, 'Unknown Track'),
+    artists: normalizeStringArray(value.artists),
+    albumName: normalizeString(value.albumName, 'Unknown Album'),
+    imageUrl: normalizeOptionalString(value.imageUrl),
+    spotifyUrl: normalizeString(value.spotifyUrl, '#'),
+  };
+}
+
+function normalizeArtist(value: unknown, index: number): SpotifyArtist | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return {
+    id: normalizeString(value.id, `artist-${index}`),
+    name: normalizeString(value.name, 'Unknown Artist'),
+    genres: normalizeStringArray(value.genres),
+    imageUrl: normalizeOptionalString(value.imageUrl),
+    popularity: typeof value.popularity === 'number' ? value.popularity : 0,
+    spotifyUrl: normalizeString(value.spotifyUrl, '#'),
+  };
+}
+
+function normalizeUserProfile(value: unknown): FullUserProfile {
+  const data = isRecord(value) ? value : {};
+  const rawProfile = isRecord(data.profile) ? data.profile : {};
+  const rawTopTracks = Array.isArray(data.topTracks) ? data.topTracks : [];
+  const rawTopArtists = Array.isArray(data.topArtists) ? data.topArtists : [];
+
+  return {
+    profile: {
+      id: normalizeString(rawProfile.id, 'unknown-user'),
+      displayName: normalizeString(rawProfile.displayName, 'Spotify User'),
+      email: normalizeString(rawProfile.email),
+      profileImageUrl: normalizeOptionalString(rawProfile.profileImageUrl),
+      country: normalizeOptionalString(rawProfile.country),
+    },
+    topTracks: rawTopTracks
+      .map((track, index) => normalizeTrack(track, index))
+      .filter((track): track is SpotifyTrack => track !== null),
+    topArtists: rawTopArtists
+      .map((artist, index) => normalizeArtist(artist, index))
+      .filter((artist): artist is SpotifyArtist => artist !== null),
+  };
+}
+
 function createMockUserProfile(): FullUserProfile {
   return {
     profile: {
@@ -155,7 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw new Error(`Failed to load profile: ${response.statusText}`);
         }
 
-        const profile = await response.json();
+        const profile = normalizeUserProfile(await response.json());
         if (!isCancelled) {
           setUser(profile);
         }

@@ -15,6 +15,53 @@ interface Recommendation {
   explanation: string;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function normalizeString(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function normalizeOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
+function normalizeRecommendation(value: unknown, index: number): Recommendation | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return {
+    id: normalizeString(value.id, `recommendation-${index}`),
+    name: normalizeString(value.name, 'Unknown Track'),
+    artists: normalizeStringArray(value.artists),
+    albumName: normalizeString(value.albumName, 'Unknown Album'),
+    imageUrl: normalizeOptionalString(value.imageUrl),
+    previewUrl: normalizeOptionalString(value.previewUrl),
+    spotifyUrl: normalizeString(value.spotifyUrl, '#'),
+    discoveryScore: typeof value.discoveryScore === 'number' ? value.discoveryScore : 0,
+    explanation: normalizeString(value.explanation, 'No explanation available.'),
+  };
+}
+
+function normalizeRecommendationsPayload(value: unknown): Recommendation[] {
+  const data = isRecord(value) ? value : {};
+  const rawRecommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
+
+  return rawRecommendations
+    .map((recommendation, index) => normalizeRecommendation(recommendation, index))
+    .filter((recommendation): recommendation is Recommendation => recommendation !== null);
+}
+
 function DashboardContent() {
   const { user, logout, loading, error } = useAuth();
   const [dialValue, setDialValue] = useState(50);
@@ -53,7 +100,7 @@ function DashboardContent() {
       }
 
       const data = await response.json();
-      setRecommendations(data.recommendations || []);
+      setRecommendations(normalizeRecommendationsPayload(data));
     } catch (error: any) {
       console.error('Error fetching recommendations:', error);
       setRecError(error.message || 'Failed to load recommendations');
@@ -130,6 +177,9 @@ function DashboardContent() {
   }
 
   const { profile, topTracks, topArtists } = user;
+  const displayName = profile.displayName || 'Spotify User';
+  const displayInitial = displayName.charAt(0) || 'S';
+  const profileEmail = profile.email || 'Email unavailable';
 
   return (
     <>
@@ -149,15 +199,15 @@ function DashboardContent() {
                 {profile.profileImageUrl ? (
                   <img
                     src={profile.profileImageUrl}
-                    alt={profile.displayName}
+                    alt={displayName}
                     className="h-6 w-6 rounded-full object-cover"
                   />
                 ) : (
                   <div className="h-6 w-6 rounded-full bg-spotify-green flex items-center justify-center text-xs text-black font-bold">
-                    {profile.displayName.charAt(0)}
+                    {displayInitial}
                   </div>
                 )}
-                <span className="text-sm font-medium text-gray-300">{profile.displayName}</span>
+                <span className="text-sm font-medium text-gray-300">{displayName}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <button
@@ -178,7 +228,7 @@ function DashboardContent() {
           <div className="relative z-10 max-w-xl">
             <span className="text-xs uppercase font-extrabold tracking-widest text-spotify-green">Phase 3 Active</span>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mt-2 mb-3">
-              Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">{profile.displayName}</span>!
+              Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">{displayName}</span>!
             </h1>
             <p className="text-gray-400 leading-relaxed">
               Your Discovery Dial is ready! Adjust the slider to control how familiar or obscure your recommendations are. The algorithm uses your top artists to find related music and scores each track based on discovery potential.
@@ -188,13 +238,13 @@ function DashboardContent() {
             {profile.profileImageUrl && (
               <img
                 src={profile.profileImageUrl}
-                alt={profile.displayName}
+                alt={displayName}
                 className="h-16 w-16 rounded-2xl object-cover border border-white/10"
               />
             )}
             <div>
-              <h3 className="font-bold text-lg">{profile.displayName}</h3>
-              <p className="text-xs text-gray-400 mt-0.5">{profile.email}</p>
+              <h3 className="font-bold text-lg">{displayName}</h3>
+              <p className="text-xs text-gray-400 mt-0.5">{profileEmail}</p>
               <div className="mt-2 flex items-center space-x-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded-full">
                   Region: {profile.country || 'US'}
@@ -307,7 +357,9 @@ function DashboardContent() {
                       <h4 className="font-bold text-sm truncate group-hover:text-spotify-green transition-colors">
                         {track.name}
                       </h4>
-                      <p className="text-xs text-gray-400 truncate mt-0.5">{track.artists.join(', ')}</p>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">
+                        {track.artists.length > 0 ? track.artists.join(', ') : 'Unknown artist'}
+                      </p>
                     </div>
                     <div className="text-gray-500 text-xs truncate max-w-[120px] hidden sm:block">
                       {track.albumName}
