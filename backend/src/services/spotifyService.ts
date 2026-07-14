@@ -80,7 +80,10 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3, us
     console.warn(`[Spotify API] 401 Unauthorized. Attempting token refresh for user ${userId}...`);
     try {
       const tokenRecord = await db.getTokensByUserId(userId);
-      if (tokenRecord) {
+      if (!tokenRecord) {
+        console.error(`[Spotify API] No token record found for user ${userId}`);
+      } else {
+        console.log(`[Spotify API] Token record found for user ${userId}, attempting refresh...`);
         const decryptedRefreshToken = decrypt(tokenRecord.refresh_token_encrypted);
         const refreshed = await refreshAccessToken(decryptedRefreshToken);
 

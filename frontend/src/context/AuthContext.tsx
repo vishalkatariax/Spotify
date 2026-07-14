@@ -140,10 +140,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
+      // Proactively refresh token if userId is available
+      if (userId && BACKEND_URL) {
+        try {
+          console.log('[AuthContext] Attempting proactive token refresh for user:', userId);
+          const refreshResponse = await fetch(`${BACKEND_URL}/api/auth/refresh`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ user_id: userId }),
+          });
+
+          if (refreshResponse.ok) {
+            const refreshData = await refreshResponse.json();
+            console.log('[AuthContext] Token refreshed successfully');
+            localStorage.setItem('spotify_access_token', refreshData.access_token);
+            setAccessToken(refreshData.access_token);
+          } else {
+            console.warn('[AuthContext] Token refresh failed, continuing with current token');
+          }
+        } catch (refreshError) {
+          console.warn('[AuthContext] Token refresh error:', refreshError);
+        }
+      }
+
       try {
         const controller = new AbortController();
         const timeoutId = window.setTimeout(() => controller.abort(), 8000);
-        const response = await fetch(`${BACKEND_URL}/api/user/profile`, {
+        const profileUrl = userId
+          ? `${BACKEND_URL}/api/user/profile?user_id=${userId}`
+          : `${BACKEND_URL}/api/user/profile`;
+        const response = await fetch(profileUrl, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },

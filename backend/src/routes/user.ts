@@ -18,6 +18,8 @@ router.get('/profile', async (req, res) => {
   const accessToken = authHeader.split(' ')[1];
   const userId = req.query.user_id as string;
 
+  console.log('[User Profile] Fetching profile with userId:', userId || 'NOT PROVIDED');
+
   try {
     const profile = await fetchSpotifyProfile(accessToken, userId);
     const topTracks = await fetchTopTracks(accessToken, 5, userId); // MVP shows top 5 tracks
