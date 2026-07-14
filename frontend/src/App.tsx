@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import DiscoveryDial from './components/DiscoveryDial';
+import Onboarding from './components/Onboarding';
 
 interface Recommendation {
   id: string;
@@ -20,13 +21,31 @@ function DashboardContent() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isLoadingRecs, setIsLoadingRecs] = useState(false);
   const [recError, setRecError] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const accessToken = localStorage.getItem('spotify_access_token');
   const userId = localStorage.getItem('user_id');
   const backendUrl = import.meta.env.VITE_API_URL;
 
+  // Check if onboarding was completed
+  useEffect(() => {
+    const onboardingCompleted = localStorage.getItem('onboarding_completed');
+    if (!onboardingCompleted) {
+      setShowOnboarding(true);
+    }
+  }, []);
+
+  const handleOnboardingComplete = () => {
+    localStorage.setItem('onboarding_completed', 'true');
+    setShowOnboarding(false);
+  };
+
   // Log backend URL for debugging
   console.log('App: backendUrl:', backendUrl || 'NOT CONFIGURED');
+
+  if (showOnboarding) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
 
   const fetchRecommendations = useCallback(async () => {
     if (!accessToken) {
