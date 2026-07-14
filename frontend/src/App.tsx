@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import DiscoveryDial from './components/DiscoveryDial';
-import RecommendationCard from './components/RecommendationCard';
 
 interface Recommendation {
   id: string;
@@ -61,39 +60,6 @@ function DashboardContent() {
       setIsLoadingRecs(false);
     }
   }, [accessToken, dialValue, backendUrl]);
-
-  const handleFeedback = async (trackId: string, isLiked: boolean) => {
-    if (!userId || !recommendations) return;
-
-    const track = recommendations.find((r) => r.id === trackId);
-    if (!track) return;
-
-    // Require backend URL for production
-    if (!backendUrl) {
-      console.log('Backend not configured, skipping feedback');
-      return;
-    }
-
-    try {
-      await fetch(`${backendUrl}/api/feedback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          track_id: track.id,
-          track_name: track.name,
-          artists: track.artists,
-          dial_value: dialValue,
-          discovery_score: track.discoveryScore,
-          is_liked: isLiked,
-        }),
-      });
-    } catch (error) {
-      console.error('Error saving feedback:', error);
-    }
-  };
 
   useEffect(() => {
     if (accessToken && userId) {
@@ -172,40 +138,54 @@ function DashboardContent() {
         </header>
 
       {/* Main Content Container */}
-      <main className="max-w-6xl mx-auto px-6 py-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Welcome Section */}
-        <section className="mb-12 relative overflow-hidden rounded-3xl bg-gradient-to-r from-neutral-900 to-neutral-950 border border-white/5 p-8 sm:p-10 flex flex-col md:flex-row md:items-center md:justify-between">
-          <div className="relative z-10 max-w-xl">
-            <span className="text-xs uppercase font-extrabold tracking-widest text-spotify-green">Phase 3 Active</span>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mt-2 mb-3">
-              Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">{profile.displayName}</span>!
-            </h1>
-            <p className="text-gray-400 leading-relaxed">
-              Your Discovery Dial is ready! Adjust the slider to control how familiar or obscure your recommendations are. The algorithm uses your top artists to find related music and scores each track based on discovery potential.
-            </p>
+        <section className="mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+            Good evening
+          </h1>
+          <p className="text-gray-400">{profile.displayName}</p>
+        </section>
+
+        {/* Top Artists Section - Spotify Style */}
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white hover:underline cursor-pointer">
+              Your top artists
+            </h2>
+            <span className="text-sm text-gray-400 hover:underline cursor-pointer">Show all</span>
           </div>
-          <div className="mt-6 md:mt-0 flex items-center space-x-4 bg-white/5 p-4 rounded-2xl border border-white/5 relative z-10">
-            {profile.profileImageUrl && (
-              <img
-                src={profile.profileImageUrl}
-                alt={profile.displayName}
-                className="h-16 w-16 rounded-2xl object-cover border border-white/10"
-              />
-            )}
-            <div>
-              <h3 className="font-bold text-lg">{profile.displayName}</h3>
-              <p className="text-xs text-gray-400 mt-0.5">{profile.email}</p>
-              <div className="mt-2 flex items-center space-x-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded-full">
-                  Region: {profile.country || 'US'}
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-spotify-green/20 text-green-400 px-2 py-0.5 rounded-full">
-                  OAuth Active
-                </span>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {topArtists.slice(0, 5).map((artist) => (
+              <div
+                key={artist.id}
+                className="group bg-[#181818] hover:bg-[#282828] p-4 rounded-lg transition-all duration-300 cursor-pointer"
+              >
+                <div className="relative mb-4">
+                  {artist.imageUrl ? (
+                    <img
+                      src={artist.imageUrl}
+                      alt={artist.name}
+                      className="w-full aspect-square object-cover rounded-md shadow-lg"
+                    />
+                  ) : (
+                    <div className="w-full aspect-square bg-[#282828] rounded-md flex items-center justify-center">
+                      <span className="text-4xl font-bold text-gray-600">{artist.name.charAt(0)}</span>
+                    </div>
+                  )}
+                  <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button className="bg-spotify-green rounded-full p-3 shadow-xl hover:scale-105 transition-transform">
+                      <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <h3 className="font-semibold text-white text-sm truncate">{artist.name}</h3>
+                <p className="text-gray-400 text-xs mt-1">Artist</p>
               </div>
-            </div>
+            ))}
           </div>
-          <div className="absolute right-0 top-0 w-80 h-80 bg-spotify-green/5 rounded-full blur-[80px] pointer-events-none"></div>
         </section>
 
         {/* Discovery Dial Section */}
@@ -215,23 +195,20 @@ function DashboardContent() {
 
         {/* Recommendations Section */}
         <section className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold tracking-tight flex items-center">
-              <span className="h-2 w-2 bg-spotify-green rounded-full mr-2.5 animate-pulse"></span>
-              Your Recommendations
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white hover:underline cursor-pointer">
+              Made for you
             </h2>
-            <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
-              {recommendations.length} tracks
-            </span>
+            <span className="text-sm text-gray-400 hover:underline cursor-pointer">Show all</span>
           </div>
 
           {isLoadingRecs ? (
-            <div className="flex flex-col items-center justify-center py-12 bg-neutral-900/30 border border-white/5 rounded-3xl">
+            <div className="flex flex-col items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-spotify-green"></div>
-              <p className="mt-4 text-gray-400 font-medium">Generating recommendations...</p>
+              <p className="mt-4 text-gray-400 font-medium">Loading recommendations...</p>
             </div>
           ) : recError ? (
-            <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl">
+            <div className="bg-[#181818] p-6 rounded-lg">
               <p className="text-red-400 text-center mb-4">{recError}</p>
               <p className="text-gray-400 text-sm text-center mb-4">
                 This might be a temporary issue. Please try adjusting the dial or refresh the page.
@@ -244,26 +221,44 @@ function DashboardContent() {
               </button>
             </div>
           ) : recommendations.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {recommendations.map((rec) => (
-                <RecommendationCard
+                <div
                   key={rec.id}
-                  id={rec.id}
-                  name={rec.name}
-                  artists={rec.artists}
-                  albumName={rec.albumName}
-                  imageUrl={rec.imageUrl}
-                  previewUrl={rec.previewUrl}
-                  spotifyUrl={rec.spotifyUrl}
-                  discoveryScore={rec.discoveryScore}
-                  explanation={rec.explanation}
-                  onLike={(id) => handleFeedback(id, true)}
-                  onDislike={(id) => handleFeedback(id, false)}
-                />
+                  className="group bg-[#181818] hover:bg-[#282828] p-4 rounded-lg transition-all duration-300 cursor-pointer"
+                >
+                  <div className="relative mb-4">
+                    {rec.imageUrl ? (
+                      <img
+                        src={rec.imageUrl}
+                        alt={rec.name}
+                        className="w-full aspect-square object-cover rounded-md shadow-lg"
+                      />
+                    ) : (
+                      <div className="w-full aspect-square bg-[#282828] rounded-md flex items-center justify-center">
+                        <span className="text-4xl font-bold text-gray-600">{rec.name.charAt(0)}</span>
+                      </div>
+                    )}
+                    <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button className="bg-spotify-green rounded-full p-3 shadow-xl hover:scale-105 transition-transform">
+                        <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <h3 className="font-semibold text-white text-sm truncate mb-1">{rec.name}</h3>
+                  <p className="text-gray-400 text-xs truncate">{rec.artists.join(', ')}</p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-xs text-spotify-green font-semibold">
+                      {rec.discoveryScore}% discovery
+                    </span>
+                  </div>
+                </div>
               ))}
             </div>
           ) : (
-            <div className="bg-neutral-900/30 border border-white/5 rounded-3xl p-12 text-center">
+            <div className="bg-[#181818] p-12 text-center rounded-lg">
               <p className="text-gray-400">Adjust the Discovery Dial to generate recommendations</p>
             </div>
           )}

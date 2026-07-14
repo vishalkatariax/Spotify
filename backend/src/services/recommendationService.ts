@@ -43,36 +43,100 @@ function generateExplanation(track: SpotifyTrack, discoveryScore: number, seedAr
 /**
  * Fetch related artists for a given artist ID
  */
-async function fetchRelatedArtists(accessToken: string, artistId: string): Promise<SpotifyArtist[]> {
-  // Due to Spotify API deprecating the related-artists endpoint for new apps in Nov 2024, 
-  // we immediately return mock data instead of causing a 403 Forbidden error in the logs.
-  const mockArtists: SpotifyArtist[] = [
+async function fetchRelatedArtists(accessToken: string, artistId: string, dialValue: number = 50): Promise<SpotifyArtist[]> {
+  // Due to Spotify API deprecating the related-artists endpoint for new apps in Nov 2024,
+  // we return different mock data based on dial value to make the dial actually work
+
+  // Comfort mode (low dial value) - familiar, popular artists
+  if (dialValue < 40) {
+    const comfortArtists: SpotifyArtist[] = [
+      {
+        id: 'rel1',
+        name: 'Arijit Singh',
+        genres: ['indian pop', 'filmi', 'bollywood'],
+        imageUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=256&h=256&q=80',
+        popularity: 92,
+        spotifyUrl: 'https://open.spotify.com/artist/4YRxDV8uJRC7zbgvEJp9R8',
+      },
+      {
+        id: 'rel2',
+        name: 'Shreya Ghoshal',
+        genres: ['indian pop', 'filmi', 'playback singing'],
+        imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=256&h=256&q=80',
+        popularity: 88,
+        spotifyUrl: 'https://open.spotify.com/artist/1YR4wmos3C1femYmuj7Aqy',
+      },
+      {
+        id: 'rel3',
+        name: 'Atif Aslam',
+        genres: ['indian pop', 'filmi', 'pakistani pop'],
+        imageUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=256&h=256&q=80',
+        popularity: 85,
+        spotifyUrl: 'https://open.spotify.com/artist/3m6dTq6p5rW8J8ZyQyQyQy',
+      },
+    ];
+    return comfortArtists;
+  }
+
+  // Explorer mode (high dial value) - obscure, experimental artists
+  if (dialValue > 60) {
+    const explorerArtists: SpotifyArtist[] = [
+      {
+        id: 'rel4',
+        name: 'Prateek Kuhad',
+        genres: ['indie pop', 'indie folk', 'singer-songwriter'],
+        imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=256&h=256&q=80',
+        popularity: 45,
+        spotifyUrl: 'https://open.spotify.com/artist/6b5B2q8QZ4B8Q4B8Q4B8Q4',
+      },
+      {
+        id: 'rel5',
+        name: 'The Local Train',
+        genres: ['indie rock', 'alternative rock', 'hindi rock'],
+        imageUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=256&h=256&q=80',
+        popularity: 38,
+        spotifyUrl: 'https://open.spotify.com/artist/5B5B2q8QZ4B8Q4B8Q4B8Q4',
+      },
+      {
+        id: 'rel6',
+        name: 'Peter Cat Recording Co.',
+        genres: ['indie rock', 'psychedelic rock', 'experimental'],
+        imageUrl: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=256&h=256&q=80',
+        popularity: 32,
+        spotifyUrl: 'https://open.spotify.com/artist/7B5B2q8QZ4B8Q4B8Q4B8Q4',
+      },
+    ];
+    return explorerArtists;
+  }
+
+  // Balanced mode - mix of familiar and new
+  const balancedArtists: SpotifyArtist[] = [
     {
-      id: 'rel1',
+      id: 'rel7',
       name: 'A.R. Rahman',
-      genres: ['indian pop', 'filmi', 'indian classical'],
+      genres: ['indian pop', 'filmi', 'indian classical', 'fusion'],
       imageUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=256&h=256&q=80',
-      popularity: 85,
+      popularity: 75,
       spotifyUrl: 'https://open.spotify.com/artist/1YR4wmos3C1femYmuj7Aqy',
     },
     {
-      id: 'rel2',
+      id: 'rel8',
       name: 'Sonu Nigam',
-      genres: ['indian pop', 'filmi'],
+      genres: ['indian pop', 'filmi', 'classical'],
       imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=256&h=256&q=80',
-      popularity: 80,
+      popularity: 70,
       spotifyUrl: 'https://open.spotify.com/artist/4YRxDV8uJRC7zbgvEJp9R8',
     },
     {
-      id: 'rel3',
-      name: 'Shankar-Ehsaan-Loy',
-      genres: ['indian pop', 'filmi', 'fusion'],
+      id: 'rel9',
+      name: 'Nucleya',
+      genres: ['electronic', 'bass music', 'indian electronic'],
       imageUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=256&h=256&q=80',
-      popularity: 75,
+      popularity: 55,
       spotifyUrl: 'https://open.spotify.com/artist/3m6dTq6p5rW8J8ZyQyQyQy',
     },
   ];
-  return mockArtists;
+  return balancedArtists;
 }
 
 /**
@@ -145,18 +209,18 @@ function calculateDiscoveryScore(dialValue: number, artistPopularity: number, ge
   // Dial value: 0 (comfort) to 100 (explorer)
   // Popularity: 0 (obscure) to 100 (mainstream)
   // Genre match: 0 (no match) to 1 (perfect match)
-  
-  // Base score from dial position
-  const baseScore = dialValue;
-  
-  // Adjust based on artist popularity (inverse relationship)
+
+  // Base score from dial position (amplified for more sensitivity)
+  const baseScore = dialValue * 0.8;
+
+  // Adjust based on artist popularity (stronger inverse relationship)
   // Low popularity = higher discovery potential
-  const popularityAdjustment = (100 - artistPopularity) * 0.3;
-  
-  // Adjust based on genre match (inverse relationship for discovery)
+  const popularityAdjustment = (100 - artistPopularity) * 0.5;
+
+  // Adjust based on genre match (stronger inverse relationship for discovery)
   // High genre match = lower discovery score (more familiar)
-  const genreAdjustment = (1 - genreMatch) * 10;
-  
+  const genreAdjustment = (1 - genreMatch) * 15;
+
   // Combine and normalize to 0-100
   const rawScore = baseScore + popularityAdjustment + genreAdjustment;
   return Math.min(100, Math.max(0, Math.round(rawScore)));
@@ -232,7 +296,7 @@ export async function generateRecommendations(
     // For each top artist, fetch related artists and their top tracks
     for (const artist of topArtists.slice(0, 3)) {
       try {
-        const relatedArtists = await fetchRelatedArtists(accessToken, artist.id);
+        const relatedArtists = await fetchRelatedArtists(accessToken, artist.id, dialValue);
         
         for (const relatedArtist of relatedArtists.slice(0, 2)) {
           try {
