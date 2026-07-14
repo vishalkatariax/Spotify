@@ -63,7 +63,7 @@ function DashboardContent() {
 
     try {
       const response = await fetch(
-        `${backendUrl}/api/recommendations?dial_value=${dialValue}&access_token=${accessToken}&limit=15`
+        `${backendUrl}/api/recommendations?dial_value=${dialValue}&access_token=${accessToken}&limit=15&user_id=${userId}`
       );
 
       if (!response.ok) {
@@ -78,7 +78,7 @@ function DashboardContent() {
     } finally {
       setIsLoadingRecs(false);
     }
-  }, [accessToken, dialValue, backendUrl]);
+  }, [accessToken, dialValue, backendUrl, userId]);
 
   useEffect(() => {
     if (accessToken && userId) {

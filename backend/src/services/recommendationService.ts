@@ -272,7 +272,8 @@ export function updateFeedbackWeights(trackId: string, isLiked: boolean): void {
 export async function generateRecommendations(
   accessToken: string,
   dialValue: number,
-  limit: number = 15
+  limit: number = 15,
+  userId?: string
 ): Promise<Recommendation[]> {
   const cacheKey = `${accessToken}_${dialValue}_${limit}`;
   const cached = cache[cacheKey];
@@ -286,7 +287,7 @@ export async function generateRecommendations(
 
   try {
     // Fetch user's top artists as seed
-    const topArtists = await fetchTopArtists(accessToken, 5);
+    const topArtists = await fetchTopArtists(accessToken, 5, userId);
     const seedArtistNames = topArtists.map((a) => a.name);
     const seedGenres = topArtists.flatMap((a) => a.genres);
     

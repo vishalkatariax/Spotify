@@ -7,6 +7,7 @@ const router = Router();
  * GET /api/user/profile
  * Retrieves user profile info, top tracks, and top artists from Spotify Web API
  * Expects headers: Authorization: Bearer <access_token>
+ * Query params: user_id (optional, for token refresh)
  */
 router.get('/profile', async (req, res) => {
   const authHeader = req.headers.authorization;
@@ -15,11 +16,12 @@ router.get('/profile', async (req, res) => {
   }
 
   const accessToken = authHeader.split(' ')[1];
+  const userId = req.query.user_id as string;
 
   try {
-    const profile = await fetchSpotifyProfile(accessToken);
-    const topTracks = await fetchTopTracks(accessToken, 5); // MVP shows top 5 tracks
-    const topArtists = await fetchTopArtists(accessToken, 5); // MVP shows top 5 artists
+    const profile = await fetchSpotifyProfile(accessToken, userId);
+    const topTracks = await fetchTopTracks(accessToken, 5, userId); // MVP shows top 5 tracks
+    const topArtists = await fetchTopArtists(accessToken, 5, userId); // MVP shows top 5 artists
 
     res.json({
       profile,

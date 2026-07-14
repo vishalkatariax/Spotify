@@ -1,5 +1,7 @@
 import path from 'path';
 import dotenv from 'dotenv';
+import { db } from '../config/db';
+import { decrypt, encrypt } from '../utils/tokenManager';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
@@ -59,9 +61,9 @@ if (isMockMode) {
 }
 
 /**
- * Helper utility to wrap fetch requests with automatic retry on 429 Rate Limiting
+ * Helper utility to wrap fetch requests with automatic retry on 429 Rate Limiting and 401 Token Refresh
  */
-async function fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {
+async function fetchWithRetry(url: string, options: RequestInit, retries = 3, userId?: string): Promise<Response> {
   const response = await fetch(url, options);
 
   if (response.status === 429 && retries > 0) {
@@ -70,7 +72,39 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3): P
     const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : 2000;
     console.warn(`[Spotify API] Rate limit hit (429). Retrying in ${waitTime}ms...`);
     await new Promise((resolve) => setTimeout(resolve, waitTime));
-    return fetchWithRetry(url, options, retries - 1);
+    return fetchWithRetry(url, options, retries - 1, userId);
+  }
+
+  // Handle 401 Unauthorized - try to refresh token if userId is provided
+  if (response.status === 401 && userId && retries > 0) {
+    console.warn(`[Spotify API] 401 Unauthorized. Attempting token refresh for user ${userId}...`);
+    try {
+      const tokenRecord = await db.getTokensByUserId(userId);
+      if (tokenRecord) {
+        const decryptedRefreshToken = decrypt(tokenRecord.refresh_token_encrypted);
+        const refreshed = await refreshAccessToken(decryptedRefreshToken);
+
+        const expiresAt = new Date(Date.now() + refreshed.expiresIn * 1000).toISOString();
+        await db.saveTokens({
+          ...tokenRecord,
+          access_token_encrypted: encrypt(refreshed.accessToken),
+          token_expires_at: expiresAt,
+        });
+
+        // Retry the original request with new token
+        const newOptions = {
+          ...options,
+          headers: {
+            ...options.headers,
+            Authorization: `Bearer ${refreshed.accessToken}`,
+          },
+        };
+        console.log(`[Spotify API] Token refreshed successfully. Retrying request...`);
+        return fetchWithRetry(url, newOptions, retries - 1, userId);
+      }
+    } catch (refreshError) {
+      console.error(`[Spotify API] Failed to refresh token:`, refreshError);
+    }
   }
 
   // Log 403 errors for debugging
@@ -162,7 +196,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<{ access
 /**
  * Fetch Spotify Profile details.
  */
-export async function fetchSpotifyProfile(accessToken: string): Promise<SpotifyProfile> {
+export async function fetchSpotifyProfile(accessToken: string, userId?: string): Promise<SpotifyProfile> {
   if (isMockMode || accessToken.startsWith('mock_')) {
     return {
       id: 'mock_user_123',
@@ -177,7 +211,7 @@ export async function fetchSpotifyProfile(accessToken: string): Promise<SpotifyP
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
-  });
+  }, 3, userId);
 
   if (!response.ok) {
     console.error(`Spotify API error (${response.status}): ${response.statusText}`);
@@ -212,7 +246,7 @@ export async function fetchSpotifyProfile(accessToken: string): Promise<SpotifyP
 /**
  * Fetch user's top tracks.
  */
-export async function fetchTopTracks(accessToken: string, limit = 10): Promise<SpotifyTrack[]> {
+export async function fetchTopTracks(accessToken: string, limit = 10, userId?: string): Promise<SpotifyTrack[]> {
   if (isMockMode || accessToken.startsWith('mock_')) {
     return [
       {
@@ -254,7 +288,7 @@ export async function fetchTopTracks(accessToken: string, limit = 10): Promise<S
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
-  });
+  }, 3, userId);
 
   if (!response.ok) {
     console.error(`Spotify API error (${response.status}): ${response.statusText}`);
@@ -308,7 +342,7 @@ export async function fetchTopTracks(accessToken: string, limit = 10): Promise<S
 /**
  * Fetch user's top artists.
  */
-export async function fetchTopArtists(accessToken: string, limit = 10): Promise<SpotifyArtist[]> {
+export async function fetchTopArtists(accessToken: string, limit = 10, userId?: string): Promise<SpotifyArtist[]> {
   if (isMockMode || accessToken.startsWith('mock_')) {
     return [
       {
@@ -342,7 +376,7 @@ export async function fetchTopArtists(accessToken: string, limit = 10): Promise<
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
-  });
+  }, 3, userId);
 
   if (!response.ok) {
     console.error(`Spotify API error (${response.status}): ${response.statusText}`);

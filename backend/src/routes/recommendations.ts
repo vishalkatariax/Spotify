@@ -11,9 +11,10 @@ const router = Router();
  * - dial_value: number (0-100, required)
  * - limit: number (optional, default 15)
  * - access_token: string (required)
+ * - user_id: string (optional, for token refresh)
  */
 router.get('/', async (req, res) => {
-  const { dial_value, limit, access_token } = req.query;
+  const { dial_value, limit, access_token, user_id } = req.query;
 
   // Validate required parameters
   if (!dial_value) {
@@ -40,7 +41,8 @@ router.get('/', async (req, res) => {
     const recommendations = await generateRecommendations(
       access_token as string,
       dialValue,
-      recommendationLimit
+      recommendationLimit,
+      user_id as string
     );
 
     // Track metrics

@@ -97,7 +97,7 @@ router.get('/callback', async (req, res) => {
     // 1. Exchange code for Spotify tokens
     const tokens = await exchangeCodeForTokens(code);
 
-    // 2. Fetch user profile from Spotify
+    // 2. Fetch user profile from Spotify (no userId yet, will fallback to mock on 401)
     const spotifyProfile = await fetchSpotifyProfile(tokens.accessToken);
 
     // 3. Check if user already exists in DB, otherwise create
