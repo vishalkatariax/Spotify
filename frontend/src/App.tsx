@@ -471,12 +471,28 @@ function CallbackHandler() {
     const spotifyId = params.get('spotify_id');
     const userId = params.get('user_id');
 
+    console.log('[Callback Handler] Received params:', {
+      status,
+      hasAccessToken: !!accessToken,
+      hasSpotifyId: !!spotifyId,
+      hasUserId: !!userId,
+      userId: userId || 'MISSING',
+      spotifyId: spotifyId || 'MISSING'
+    });
+
     if (status === 'success' && accessToken && spotifyId && userId) {
+      console.log('[Callback Handler] All params present, calling setSession');
       // Save details to Context/LocalStorage
       setSession(accessToken, spotifyId, userId);
       // Redirect to main page without query parameters
       window.location.href = '/';
     } else {
+      console.error('[Callback Handler] Missing required params:', {
+        status,
+        hasAccessToken: !!accessToken,
+        hasSpotifyId: !!spotifyId,
+        hasUserId: !!userId
+      });
       const errorMsg = params.get('error') || 'Authentication Callback failed.';
       window.location.href = `/?error=${encodeURIComponent(errorMsg)}`;
     }

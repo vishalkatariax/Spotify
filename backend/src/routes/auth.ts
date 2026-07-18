@@ -194,6 +194,14 @@ router.get('/callback', async (req, res) => {
       user_id: user.id,
     }).toString()}`;
 
+    console.log('[Auth Callback] Redirecting to frontend with:', {
+      frontendUrl,
+      hasAccessToken: !!tokens.accessToken,
+      spotifyId: spotifyProfile.id,
+      userId: user.id,
+      redirectUrl: redirectUrl.substring(0, 100) + '...'
+    });
+
     res.redirect(redirectUrl);
   } catch (error: any) {
     console.error('OAuth Callback Error:', error);

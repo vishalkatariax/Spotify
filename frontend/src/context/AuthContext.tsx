@@ -238,6 +238,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const setSession = (token: string, sId: string, uId: string) => {
+    console.log('[AuthContext] setSession called with:', {
+      hasToken: !!token,
+      hasSpotifyId: !!sId,
+      hasUserId: !!uId,
+      userId: uId || 'MISSING',
+      spotifyId: sId || 'MISSING'
+    });
     localStorage.setItem('spotify_access_token', token);
     localStorage.setItem('spotify_id', sId);
     localStorage.setItem('user_id', uId);
@@ -247,6 +254,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(token.startsWith('mock_') ? createMockUserProfile() : null);
     setLoading(!token.startsWith('mock_'));
     setError(null);
+
+    // Verify storage
+    console.log('[AuthContext] After setSession, localStorage contains:', {
+      accessToken: localStorage.getItem('spotify_access_token') ? 'PRESENT' : 'MISSING',
+      spotifyId: localStorage.getItem('spotify_id') ? 'PRESENT' : 'MISSING',
+      userId: localStorage.getItem('user_id') ? 'PRESENT' : 'MISSING'
+    });
   };
 
   const isAuthenticated = !!accessToken;
