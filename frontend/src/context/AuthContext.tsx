@@ -140,6 +140,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
+      // If userId is missing, force re-login to get proper session
+      if (!userId) {
+        console.warn('[AuthContext] userId missing, forcing re-login to establish proper session');
+        localStorage.removeItem('spotify_access_token');
+        localStorage.removeItem('spotify_id');
+        localStorage.removeItem('user_id');
+        setAccessToken(null);
+        setUserId(null);
+        setSpotifyId(null);
+        setUser(null);
+        setError('Session expired. Please log in again to continue.');
+        setLoading(false);
+        return;
+      }
+
       // Proactively refresh token if userId is available
       if (userId && BACKEND_URL) {
         try {
@@ -162,22 +177,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch (refreshError) {
           console.warn('[AuthContext] Token refresh error:', refreshError);
-        }
-      } else if (!userId && spotifyId && BACKEND_URL) {
-        // Fallback: Try to fetch user_id from backend using spotify_id
-        console.log('[AuthContext] userId missing, attempting to fetch from backend using spotifyId:', spotifyId);
-        try {
-          const userResponse = await fetch(`${BACKEND_URL}/api/user/by-spotify-id?spotify_id=${spotifyId}`);
-          if (userResponse.ok) {
-            const userData = await userResponse.json();
-            if (userData.user_id) {
-              console.log('[AuthContext] Retrieved user_id from backend:', userData.user_id);
-              localStorage.setItem('user_id', userData.user_id);
-              setUserId(userData.user_id);
-            }
-          }
-        } catch (fetchError) {
-          console.warn('[AuthContext] Failed to fetch user_id from backend:', fetchError);
         }
       }
 
