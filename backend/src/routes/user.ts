@@ -1,7 +1,33 @@
 import { Router } from 'express';
 import { fetchSpotifyProfile, fetchTopTracks, fetchTopArtists } from '../services/spotifyService';
+import { db } from '../config/db';
 
 const router = Router();
+
+/**
+ * GET /api/user/by-spotify-id
+ * Retrieves user_id by spotify_id
+ * Query params: spotify_id (required)
+ */
+router.get('/by-spotify-id', async (req, res) => {
+  const { spotify_id } = req.query;
+
+  if (!spotify_id) {
+    return res.status(400).json({ error: 'Missing spotify_id parameter' });
+  }
+
+  try {
+    const user = await db.getUserBySpotifyId(spotify_id as string);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ user_id: user.id });
+  } catch (error: any) {
+    console.error('Error fetching user by spotify_id:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch user' });
+  }
+});
 
 /**
  * GET /api/user/profile

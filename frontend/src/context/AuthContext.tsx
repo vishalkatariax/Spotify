@@ -163,6 +163,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (refreshError) {
           console.warn('[AuthContext] Token refresh error:', refreshError);
         }
+      } else if (!userId && spotifyId && BACKEND_URL) {
+        // Fallback: Try to fetch user_id from backend using spotify_id
+        console.log('[AuthContext] userId missing, attempting to fetch from backend using spotifyId:', spotifyId);
+        try {
+          const userResponse = await fetch(`${BACKEND_URL}/api/user/by-spotify-id?spotify_id=${spotifyId}`);
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            if (userData.user_id) {
+              console.log('[AuthContext] Retrieved user_id from backend:', userData.user_id);
+              localStorage.setItem('user_id', userData.user_id);
+              setUserId(userData.user_id);
+            }
+          }
+        } catch (fetchError) {
+          console.warn('[AuthContext] Failed to fetch user_id from backend:', fetchError);
+        }
       }
 
       try {
