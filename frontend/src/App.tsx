@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import DiscoveryDial from './components/DiscoveryDial';
 import Onboarding from './components/Onboarding';
@@ -463,8 +463,12 @@ function LoginScreen() {
 
 function CallbackHandler() {
   const { setSession } = useAuth();
+  const isProcessing = useRef(false);
 
   useEffect(() => {
+    if (isProcessing.current) return;
+    isProcessing.current = true;
+
     const params = new URLSearchParams(window.location.search);
     const status = params.get('status');
     const accessToken = params.get('access_token');
@@ -484,10 +488,8 @@ function CallbackHandler() {
       console.log('[Callback Handler] All params present, calling setSession');
       // Save details to Context/LocalStorage
       setSession(accessToken, spotifyId, userId);
-      // Redirect to main page without query parameters using setTimeout to avoid React error
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 100);
+      // Redirect to main page without query parameters
+      window.location.href = '/';
     } else {
       console.error('[Callback Handler] Missing required params:', {
         status,
@@ -496,9 +498,7 @@ function CallbackHandler() {
         hasUserId: !!userId
       });
       const errorMsg = params.get('error') || 'Authentication Callback failed.';
-      setTimeout(() => {
-        window.location.href = `/?error=${encodeURIComponent(errorMsg)}`;
-      }, 100);
+      window.location.href = `/?error=${encodeURIComponent(errorMsg)}`;
     }
   }, []);
 
