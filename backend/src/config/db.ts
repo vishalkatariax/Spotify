@@ -484,7 +484,13 @@ const DB_EMAIL_SAFETY_PATCH_VERSION = 'email-non-null-v1';
 
 console.log(`Database: initializing (patch=${DB_EMAIL_SAFETY_PATCH_VERSION})`);
 
-if (supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_supabase_project_url') {
+// Force memory database in production due to Supabase DNS issues
+const FORCE_MEMORY_DB = process.env.FORCE_MEMORY_DB === 'true' || process.env.NODE_ENV === 'production';
+
+if (FORCE_MEMORY_DB) {
+  console.log('Database: FORCE_MEMORY_DB enabled, using local memory database');
+  db = new MemoryDB();
+} else if (supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_supabase_project_url') {
   console.log('Database: Using Supabase connection');
   db = new SupabaseDB(supabaseUrl, supabaseAnonKey);
 } else {
