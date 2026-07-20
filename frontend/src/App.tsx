@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import DiscoveryDial from './components/DiscoveryDial';
 import Onboarding from './components/Onboarding';
@@ -463,44 +463,39 @@ function LoginScreen() {
 
 function CallbackHandler() {
   const { setSession } = useAuth();
-  const isProcessing = useRef(false);
 
-  useEffect(() => {
-    if (isProcessing.current) return;
-    isProcessing.current = true;
+  // Handle callback immediately, outside React's rendering cycle
+  const params = new URLSearchParams(window.location.search);
+  const status = params.get('status');
+  const accessToken = params.get('access_token');
+  const spotifyId = params.get('spotify_id');
+  const userId = params.get('user_id');
 
-    const params = new URLSearchParams(window.location.search);
-    const status = params.get('status');
-    const accessToken = params.get('access_token');
-    const spotifyId = params.get('spotify_id');
-    const userId = params.get('user_id');
+  console.log('[Callback Handler] Received params:', {
+    status,
+    hasAccessToken: !!accessToken,
+    hasSpotifyId: !!spotifyId,
+    hasUserId: !!userId,
+    userId: userId || 'MISSING',
+    spotifyId: spotifyId || 'MISSING'
+  });
 
-    console.log('[Callback Handler] Received params:', {
+  if (status === 'success' && accessToken && spotifyId && userId) {
+    console.log('[Callback Handler] All params present, calling setSession');
+    // Save details to Context/LocalStorage
+    setSession(accessToken, spotifyId, userId);
+    // Redirect to main page without query parameters
+    window.location.href = '/';
+  } else {
+    console.error('[Callback Handler] Missing required params:', {
       status,
       hasAccessToken: !!accessToken,
       hasSpotifyId: !!spotifyId,
-      hasUserId: !!userId,
-      userId: userId || 'MISSING',
-      spotifyId: spotifyId || 'MISSING'
+      hasUserId: !!userId
     });
-
-    if (status === 'success' && accessToken && spotifyId && userId) {
-      console.log('[Callback Handler] All params present, calling setSession');
-      // Save details to Context/LocalStorage
-      setSession(accessToken, spotifyId, userId);
-      // Redirect to main page without query parameters
-      window.location.href = '/';
-    } else {
-      console.error('[Callback Handler] Missing required params:', {
-        status,
-        hasAccessToken: !!accessToken,
-        hasSpotifyId: !!spotifyId,
-        hasUserId: !!userId
-      });
-      const errorMsg = params.get('error') || 'Authentication Callback failed.';
-      window.location.href = `/?error=${encodeURIComponent(errorMsg)}`;
-    }
-  }, []);
+    const errorMsg = params.get('error') || 'Authentication Callback failed.';
+    window.location.href = `/?error=${encodeURIComponent(errorMsg)}`;
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
