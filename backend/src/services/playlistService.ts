@@ -19,6 +19,15 @@ export interface CreatePlaylistRequest {
   userId?: string;
 }
 
+interface SpotifyPlaylistResponse {
+  id: string;
+  name: string;
+  description: string;
+  external_urls: {
+    spotify: string;
+  };
+}
+
 /**
  * Get user's playlists
  */
@@ -68,7 +77,7 @@ export async function getUserPlaylists(accessToken: string, userId?: string | nu
 }
 
 /**
- * Create a new playlist
+ * Create a new playlist in Spotify
  */
 export async function createPlaylist({
   name,
@@ -94,14 +103,67 @@ export async function createPlaylist({
   }
 
   try {
-    // Create playlist in database
+    // Get user's Spotify profile to get their Spotify user ID
+    const userProfile = await fetchSpotifyProfile(accessToken, userId);
+    const spotifyUserId = userProfile.id;
+
+    // Create playlist in Spotify
+    const createResponse = await fetch(`https://api.spotify.com/v1/users/${spotifyUserId}/playlists`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: name,
+        description: description || 'Created with Discovery Dial',
+        public: false,
+      }),
+    });
+
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      console.error('Spotify API error creating playlist:', errorText);
+      throw new Error(`Failed to create playlist: ${createResponse.status}`);
+    }
+
+    const spotifyPlaylist = await createResponse.json() as SpotifyPlaylistResponse;
+
+    // Add tracks to the newly created playlist
+    if (trackIds.length > 0) {
+      const trackUris = trackIds.map((id) => `spotify:track:${id}`);
+
+      // Spotify API allows max 100 tracks per request, chunk if needed
+      const chunkSize = 100;
+      for (let i = 0; i < trackUris.length; i += chunkSize) {
+        const chunk = trackUris.slice(i, i + chunkSize);
+
+        const addResponse = await fetch(`https://api.spotify.com/v1/playlists/${spotifyPlaylist.id}/tracks`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            uris: chunk,
+          }),
+        });
+
+        if (!addResponse.ok) {
+          console.error('Failed to add tracks to playlist:', await addResponse.text());
+          // Continue anyway, playlist was created successfully
+        }
+      }
+    }
+
+    // Store playlist in database
     const dbPlaylist = await db.createPlaylist({
       user_id: userId,
-      name,
-      description: description || undefined,
+      name: spotifyPlaylist.name,
+      description: spotifyPlaylist.description,
       track_count: trackIds.length,
-      spotify_id: `playlist_${Date.now()}`,
-      spotify_url: `https://open.spotify.com/playlist/mock_${Date.now()}`,
+      spotify_id: spotifyPlaylist.id,
+      spotify_url: spotifyPlaylist.external_urls.spotify,
     });
 
     // Convert to playlist object
@@ -120,8 +182,7 @@ export async function createPlaylist({
 }
 
 /**
- * Add tracks to existing playlist (mock implementation)
- * In production, this would use Spotify API
+ * Add tracks to existing Spotify playlist
  */
 export async function addTracksToPlaylist(
   playlistId: string,
@@ -133,9 +194,35 @@ export async function addTracksToPlaylist(
     return true;
   }
 
-  // Real implementation would use Spotify API
-  // POST /playlists/{playlist_id}/tracks
-  return false;
+  try {
+    // Spotify API allows max 100 tracks per request, chunk if needed
+    const chunkSize = 100;
+    for (let i = 0; i < trackUris.length; i += chunkSize) {
+      const chunk = trackUris.slice(i, i + chunkSize);
+
+      const addResponse = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          uris: chunk,
+        }),
+      });
+
+      if (!addResponse.ok) {
+        const errorText = await addResponse.text();
+        console.error('Failed to add tracks to playlist:', errorText);
+        return false;
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error adding tracks to playlist:', error);
+    return false;
+  }
 }
 
 /**

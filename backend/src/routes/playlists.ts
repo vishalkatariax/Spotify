@@ -53,6 +53,8 @@ router.get('/', async (req, res) => {
  * - name: string (required)
  * - description?: string (optional)
  * - trackIds: string[] (required)
+ * Query params:
+ * - user_id: string (optional, for database operations)
  */
 router.post('/', async (req, res) => {
   const authHeader = req.headers.authorization;
@@ -62,6 +64,7 @@ router.post('/', async (req, res) => {
 
   const accessToken = authHeader.split(' ')[1];
   const { name, description, trackIds } = req.body;
+  const userId = req.query.user_id as string;
 
   // Validate required parameters
   if (!name) {
@@ -72,26 +75,31 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Missing or invalid parameter: trackIds (must be non-empty array)' });
   }
 
-  // Get user ID from token
-  const userId = (accessToken.startsWith('mock_')) ? 'mock_user_123' : undefined;
+  // Get user ID from token or query parameter
+  const finalUserId = userId || (accessToken.startsWith('mock_') ? 'mock_user_123' : undefined);
 
   try {
+    console.log('[Playlist] Creating playlist:', {
+      name,
+      trackCount: trackIds.length,
+      hasUserId: !!finalUserId,
+      userId: finalUserId || 'NOT PROVIDED'
+    });
+
     // Create playlist
     const playlist = await createPlaylist({
       name,
       description,
       trackIds,
       accessToken,
-      userId,
+      userId: finalUserId,
     });
 
-    // Convert track IDs to URIs for Spotify
-    const trackUris = getTrackUris(trackIds);
-
-    // Add tracks to playlist (async, non-blocking)
-    addTracksToPlaylist(playlist.id, trackUris, accessToken)
-      .then(() => console.log(`Added ${trackIds.length} tracks to playlist ${playlist.name}`))
-      .catch((err) => console.error('Error adding tracks to playlist:', err));
+    console.log('[Playlist] Playlist created successfully:', {
+      playlistId: playlist.id,
+      spotifyUrl: playlist.spotifyUrl,
+      trackCount: playlist.trackCount
+    });
 
     res.status(201).json({
       success: true,

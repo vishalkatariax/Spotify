@@ -21,7 +21,7 @@ function CreatePlaylistModal({ isOpen, onClose, selectedTracks, onPlaylistCreate
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { accessToken } = useAuth();
+  const { accessToken, userId } = useAuth();
 
   const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -33,7 +33,11 @@ function CreatePlaylistModal({ isOpen, onClose, selectedTracks, onPlaylistCreate
     setError(null);
 
     try {
-      const response = await fetch(`${backendUrl}/api/playlists`, {
+      const url = userId
+        ? `${backendUrl}/api/playlists?user_id=${userId}`
+        : `${backendUrl}/api/playlists`;
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
