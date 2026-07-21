@@ -156,6 +156,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Proactively refresh token if userId is available
+      // Temporarily disabled due to 404 error on /api/auth/refresh endpoint
+      // TODO: Re-enable after backend redeployment
+      /*
       if (userId && BACKEND_URL) {
         try {
           console.log('[AuthContext] Attempting proactive token refresh for user:', userId);
@@ -179,6 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.warn('[AuthContext] Token refresh error:', refreshError);
         }
       }
+      */
 
       try {
         const controller = new AbortController();
