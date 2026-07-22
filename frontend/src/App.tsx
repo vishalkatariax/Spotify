@@ -43,10 +43,6 @@ function DashboardContent() {
   // Log backend URL for debugging
   console.log('App: backendUrl:', backendUrl || 'NOT CONFIGURED');
 
-  if (showOnboarding) {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
-  }
-
   const fetchRecommendations = useCallback(async () => {
     if (!accessToken) {
       return;
@@ -85,6 +81,10 @@ function DashboardContent() {
       fetchRecommendations();
     }
   }, [dialValue, accessToken, userId, fetchRecommendations]);
+
+  if (showOnboarding) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
 
   if (loading) {
     return (
