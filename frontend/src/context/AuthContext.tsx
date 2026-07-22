@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 
 export interface UserProfile {
   id: string;
@@ -107,19 +107,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [spotifyId, setSpotifyId] = useState<string | null>(localStorage.getItem('spotify_id'));
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(!localStorage.getItem('spotify_access_token'));
+  const isLoadingRef = useRef(false);
 
   useEffect(() => {
     console.log('[AuthContext] useEffect triggered:', {
       hasAccessToken: !!accessToken,
       hasUserId: !!userId,
       BACKEND_URL,
-      loading
+      loading,
+      isLoading: isLoadingRef.current
     });
 
     if (!accessToken) {
       console.log('[AuthContext] No access token, clearing user state');
       setUser(null);
       setLoading(false);
+      isLoadingRef.current = false;
+      return;
+    }
+
+    // Prevent concurrent profile loads
+    if (isLoadingRef.current) {
+      console.log('[AuthContext] Profile load already in progress, skipping');
       return;
     }
 
@@ -127,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const loadUserProfile = async () => {
       console.log('[AuthContext] Starting profile load...');
+      isLoadingRef.current = true;
       setLoading(true);
       setError(null);
 
@@ -136,6 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isCancelled) {
           setUser(createMockUserProfile());
           setLoading(false);
+          isLoadingRef.current = false;
         }
         return;
       }
@@ -147,6 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setError('Backend URL not configured. Please set VITE_API_URL environment variable.');
           setUser(null);
           setLoading(false);
+          isLoadingRef.current = false;
         }
         return;
       }
@@ -163,6 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setError('Session expired. Please log in again to continue.');
         setLoading(false);
+        isLoadingRef.current = false;
         return;
       }
 
@@ -217,6 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isCancelled) {
           console.log('[AuthContext] Profile load complete, setting loading to false');
           setLoading(false);
+          isLoadingRef.current = false;
         }
       }
     };
@@ -226,6 +240,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       console.log('[AuthContext] Cleanup: cancelling profile load');
       isCancelled = true;
+      isLoadingRef.current = false;
     };
   }, [accessToken, userId, BACKEND_URL]);
 
