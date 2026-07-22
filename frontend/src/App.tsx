@@ -464,38 +464,44 @@ function LoginScreen() {
 function CallbackHandler() {
   const { setSession } = useAuth();
 
-  // Handle callback immediately, outside React's rendering cycle
-  const params = new URLSearchParams(window.location.search);
-  const status = params.get('status');
-  const accessToken = params.get('access_token');
-  const spotifyId = params.get('spotify_id');
-  const userId = params.get('user_id');
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('status');
+    const accessToken = params.get('access_token');
+    const spotifyId = params.get('spotify_id');
+    const userId = params.get('user_id');
 
-  console.log('[Callback Handler] Received params:', {
-    status,
-    hasAccessToken: !!accessToken,
-    hasSpotifyId: !!spotifyId,
-    hasUserId: !!userId,
-    userId: userId || 'MISSING',
-    spotifyId: spotifyId || 'MISSING'
-  });
-
-  if (status === 'success' && accessToken && spotifyId && userId) {
-    console.log('[Callback Handler] All params present, calling setSession');
-    // Save details to Context/LocalStorage
-    setSession(accessToken, spotifyId, userId);
-    // Redirect to main page without query parameters
-    window.location.href = '/';
-  } else {
-    console.error('[Callback Handler] Missing required params:', {
+    console.log('[Callback Handler] Received params:', {
       status,
       hasAccessToken: !!accessToken,
       hasSpotifyId: !!spotifyId,
-      hasUserId: !!userId
+      hasUserId: !!userId,
+      userId: userId || 'MISSING',
+      spotifyId: spotifyId || 'MISSING'
     });
-    const errorMsg = params.get('error') || 'Authentication Callback failed.';
-    window.location.href = `/?error=${encodeURIComponent(errorMsg)}`;
-  }
+
+    if (status === 'success' && accessToken && spotifyId && userId) {
+      console.log('[Callback Handler] All params present, calling setSession');
+      // Save details to Context/LocalStorage
+      setSession(accessToken, spotifyId, userId);
+      // Wait for state to be set before redirecting
+      setTimeout(() => {
+        console.log('[Callback Handler] Redirecting to main page');
+        window.location.href = '/';
+      }, 500);
+    } else {
+      console.error('[Callback Handler] Missing required params:', {
+        status,
+        hasAccessToken: !!accessToken,
+        hasSpotifyId: !!spotifyId,
+        hasUserId: !!userId
+      });
+      const errorMsg = params.get('error') || 'Authentication Callback failed.';
+      setTimeout(() => {
+        window.location.href = `/?error=${encodeURIComponent(errorMsg)}`;
+      }, 500);
+    }
+  }, [setSession]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
