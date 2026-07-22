@@ -462,7 +462,7 @@ function LoginScreen() {
 }
 
 function CallbackHandler() {
-  const { setSession } = useAuth();
+  const { setSession, isAuthenticated, loading } = useAuth();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -471,7 +471,7 @@ function CallbackHandler() {
     const spotifyId = params.get('spotify_id');
     const userId = params.get('user_id');
 
-    console.log('[Callback Handler] Received params:', {
+    console.log('[Callback Holder] Received params:', {
       status,
       hasAccessToken: !!accessToken,
       hasSpotifyId: !!spotifyId,
@@ -481,32 +481,35 @@ function CallbackHandler() {
     });
 
     if (status === 'success' && accessToken && spotifyId && userId) {
-      console.log('[Callback Handler] All params present, calling setSession');
+      console.log('[Callback Holder] All params present, calling setSession');
       // Save details to Context/LocalStorage
       setSession(accessToken, spotifyId, userId);
-      // Wait for state to be set before redirecting
-      setTimeout(() => {
-        console.log('[Callback Handler] Redirecting to main page');
-        window.location.href = '/';
-      }, 500);
     } else {
-      console.error('[Callback Handler] Missing required params:', {
+      console.error('[Callback Holder] Missing required params:', {
         status,
         hasAccessToken: !!accessToken,
         hasSpotifyId: !!spotifyId,
         hasUserId: !!userId
       });
       const errorMsg = params.get('error') || 'Authentication Callback failed.';
-      setTimeout(() => {
-        window.location.href = `/?error=${encodeURIComponent(errorMsg)}`;
-      }, 500);
+      window.location.href = `/?error=${encodeURIComponent(errorMsg)}`;
     }
   }, [setSession]);
+
+  // Redirect only when authenticated and not loading
+  useEffect(() => {
+    if (isAuthenticated && !loading) {
+      console.log('[Callback Holder] User authenticated, redirecting to dashboard');
+      window.location.href = '/';
+    }
+  }, [isAuthenticated, loading]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-spotify-green"></div>
-      <p className="mt-4 text-gray-400 font-medium">Authorizing with Spotify...</p>
+      <p className="mt-4 text-gray-400 font-medium">
+        {loading ? 'Loading your profile...' : 'Setting up your session...'}
+      </p>
     </div>
   );
 }
