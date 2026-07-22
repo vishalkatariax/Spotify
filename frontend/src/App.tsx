@@ -175,9 +175,9 @@ function DashboardContent() {
             <span className="text-sm text-gray-400 hover:underline cursor-pointer">Show all</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {topArtists.slice(0, 5).map((artist) => (
+            {topArtists.slice(0, 5).map((artist, idx) => (
               <div
-                key={artist.id}
+                key={`${artist.id}-${idx}`}
                 className="group bg-[#181818] hover:bg-[#282828] p-4 rounded-lg transition-all duration-300 cursor-pointer"
               >
                 <div className="relative mb-4">
@@ -241,9 +241,9 @@ function DashboardContent() {
             </div>
           ) : recommendations.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {recommendations.map((rec) => (
+              {recommendations.map((rec, idx) => (
                 <div
-                  key={rec.id}
+                  key={`${rec.id}-${idx}`}
                   className="group bg-[#181818] hover:bg-[#282828] p-4 rounded-lg transition-all duration-300 cursor-pointer"
                 >
                   <div className="relative mb-4">
@@ -299,7 +299,7 @@ function DashboardContent() {
               {topTracks.length > 0 ? (
                 topTracks.map((track, idx) => (
                   <a
-                    key={track.id}
+                    key={`${track.id}-${idx}`}
                     href={track.spotifyUrl}
                     target="_blank"
                     rel="noreferrer"
@@ -348,7 +348,7 @@ function DashboardContent() {
               {topArtists.length > 0 ? (
                 topArtists.map((artist, idx) => (
                   <a
-                    key={artist.id}
+                    key={`${artist.id}-${idx}`}
                     href={artist.spotifyUrl}
                     target="_blank"
                     rel="noreferrer"
@@ -371,9 +371,9 @@ function DashboardContent() {
                         {artist.name}
                       </h4>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {(artist.genres || []).slice(0, 2).map((g) => (
+                        {(artist.genres || []).slice(0, 2).map((g, idx) => (
                           <span
-                            key={g}
+                            key={`${g}-${idx}`}
                             className="text-[9px] font-semibold bg-white/5 px-2 py-0.5 rounded-full text-gray-400 border border-white/5"
                           >
                             {g}
