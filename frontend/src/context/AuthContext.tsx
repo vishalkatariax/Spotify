@@ -109,7 +109,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(!localStorage.getItem('spotify_access_token'));
 
   useEffect(() => {
+    console.log('[AuthContext] useEffect triggered:', {
+      hasAccessToken: !!accessToken,
+      hasUserId: !!userId,
+      BACKEND_URL,
+      loading
+    });
+
     if (!accessToken) {
+      console.log('[AuthContext] No access token, clearing user state');
       setUser(null);
       setLoading(false);
       return;
@@ -118,11 +126,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let isCancelled = false;
 
     const loadUserProfile = async () => {
+      console.log('[AuthContext] Starting profile load...');
       setLoading(true);
       setError(null);
 
       // For mock tokens, use mock profile
       if (accessToken.startsWith('mock_')) {
+        console.log('[AuthContext] Using mock profile');
         if (!isCancelled) {
           setUser(createMockUserProfile());
           setLoading(false);
@@ -132,6 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Require backend URL for production
       if (!BACKEND_URL) {
+        console.error('[AuthContext] Backend URL not configured');
         if (!isCancelled) {
           setError('Backend URL not configured. Please set VITE_API_URL environment variable.');
           setUser(null);
@@ -155,34 +166,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      // Proactively refresh token if userId is available
-      // Temporarily disabled due to 404 error on /api/auth/refresh endpoint
-      // TODO: Re-enable after backend redeployment
-      /*
-      if (userId && BACKEND_URL) {
-        try {
-          console.log('[AuthContext] Attempting proactive token refresh for user:', userId);
-          const refreshResponse = await fetch(`${BACKEND_URL}/api/auth/refresh`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ user_id: userId }),
-          });
-
-          if (refreshResponse.ok) {
-            const refreshData = await refreshResponse.json();
-            console.log('[AuthContext] Token refreshed successfully');
-            localStorage.setItem('spotify_access_token', refreshData.access_token);
-            setAccessToken(refreshData.access_token);
-          } else {
-            console.warn('[AuthContext] Token refresh failed, continuing with current token');
-          }
-        } catch (refreshError) {
-          console.warn('[AuthContext] Token refresh error:', refreshError);
-        }
-      }
-      */
+      console.log('[AuthContext] Fetching profile from backend:', {
+        userId,
+        BACKEND_URL,
+        hasAccessToken: !!accessToken
+      });
 
       try {
         const controller = new AbortController();
@@ -190,6 +178,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profileUrl = userId
           ? `${BACKEND_URL}/api/user/profile?user_id=${userId}`
           : `${BACKEND_URL}/api/user/profile`;
+        
+        console.log('[AuthContext] Fetching from:', profileUrl);
+        
         const response = await fetch(profileUrl, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -198,21 +189,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         window.clearTimeout(timeoutId);
 
+        console.log('[AuthContext] Profile response status:', response.status);
+
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[AuthContext] Profile fetch failed:', response.status, errorText);
           throw new Error(`Failed to load profile: ${response.statusText}`);
         }
 
         const profile = await response.json();
+        console.log('[AuthContext] Profile loaded successfully:', {
+          hasProfile: !!profile,
+          profileKeys: profile ? Object.keys(profile) : []
+        });
+        
         if (!isCancelled) {
           setUser(profile);
+          console.log('[AuthContext] User state set');
         }
       } catch (err: any) {
+        console.error('[AuthContext] Profile load error:', err);
         if (!isCancelled) {
           setError(err.message || 'Failed to load user profile');
           setUser(null);
         }
       } finally {
         if (!isCancelled) {
+          console.log('[AuthContext] Profile load complete, setting loading to false');
           setLoading(false);
         }
       }
@@ -221,9 +224,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadUserProfile();
 
     return () => {
+      console.log('[AuthContext] Cleanup: cancelling profile load');
       isCancelled = true;
     };
-  }, [accessToken, BACKEND_URL]);
+  }, [accessToken, userId, BACKEND_URL]);
 
   const login = () => {
     window.location.href = `${BACKEND_URL}/api/auth/login?return_to=${encodeURIComponent(window.location.origin)}`;
