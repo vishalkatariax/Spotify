@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 export interface UserProfile {
   id: string;
@@ -107,77 +107,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [spotifyId, setSpotifyId] = useState<string | null>(localStorage.getItem('spotify_id'));
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(!localStorage.getItem('spotify_access_token'));
-  const isLoadingRef = useRef(false);
-  const mountedRef = useRef(true);
-  const loadingUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+    const loadUserProfile = async () => {
+      console.log('[AuthContext] useEffect triggered:', {
+        hasAccessToken: !!accessToken,
+        hasUserId: !!userId,
+        BACKEND_URL,
+        loading
+      });
 
-  useEffect(() => {
-    console.log('[AuthContext] useEffect triggered:', {
-      hasAccessToken: !!accessToken,
-      hasUserId: !!userId,
-      BACKEND_URL,
-      loading,
-      isLoading: isLoadingRef.current,
-      loadingUserId: loadingUserIdRef.current,
-      mounted: mountedRef.current
-    });
-
-    if (!accessToken) {
-      console.log('[AuthContext] No access token, clearing user state');
-      if (mountedRef.current) {
+      if (!accessToken) {
+        console.log('[AuthContext] No access token, clearing user state');
         setUser(null);
         setLoading(false);
+        return;
       }
-      isLoadingRef.current = false;
-      loadingUserIdRef.current = null;
-      return;
-    }
 
-    // Prevent concurrent profile loads for the same userId
-    if (isLoadingRef.current && loadingUserIdRef.current === userId) {
-      console.log('[AuthContext] Profile load already in progress for this userId, skipping');
-      return;
-    }
-
-    const loadUserProfile = async () => {
-      console.log('[AuthContext] Starting profile load...');
-      isLoadingRef.current = true;
-      loadingUserIdRef.current = userId;
-      
-      if (mountedRef.current) {
-        setLoading(true);
-        setError(null);
-      }
+      setLoading(true);
+      setError(null);
 
       // For mock tokens, use mock profile
       if (accessToken.startsWith('mock_')) {
         console.log('[AuthContext] Using mock profile');
-        if (mountedRef.current) {
-          setUser(createMockUserProfile());
-          setLoading(false);
-        }
-        isLoadingRef.current = false;
-        loadingUserIdRef.current = null;
+        setUser(createMockUserProfile());
+        setLoading(false);
         return;
       }
 
       // Require backend URL for production
       if (!BACKEND_URL) {
         console.error('[AuthContext] Backend URL not configured');
-        if (mountedRef.current) {
-          setError('Backend URL not configured. Please set VITE_API_URL environment variable.');
-          setUser(null);
-          setLoading(false);
-        }
-        isLoadingRef.current = false;
-        loadingUserIdRef.current = null;
+        setError('Backend URL not configured. Please set VITE_API_URL environment variable.');
+        setUser(null);
+        setLoading(false);
         return;
       }
 
@@ -187,16 +150,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem('spotify_access_token');
         localStorage.removeItem('spotify_id');
         localStorage.removeItem('user_id');
-        if (mountedRef.current) {
-          setAccessToken(null);
-          setUserId(null);
-          setSpotifyId(null);
-          setUser(null);
-          setError('Session expired. Please log in again to continue.');
-          setLoading(false);
-        }
-        isLoadingRef.current = false;
-        loadingUserIdRef.current = null;
+        setAccessToken(null);
+        setUserId(null);
+        setSpotifyId(null);
+        setUser(null);
+        setError('Session expired. Please log in again to continue.');
+        setLoading(false);
         return;
       }
 
@@ -209,9 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const controller = new AbortController();
         const timeoutId = window.setTimeout(() => controller.abort(), 8000);
-        const profileUrl = userId
-          ? `${BACKEND_URL}/api/user/profile?user_id=${userId}`
-          : `${BACKEND_URL}/api/user/profile`;
+        const profileUrl = `${BACKEND_URL}/api/user/profile?user_id=${userId}`;
         
         console.log('[AuthContext] Fetching from:', profileUrl);
         
@@ -237,33 +194,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           profileKeys: profile ? Object.keys(profile) : []
         });
         
-        if (mountedRef.current) {
-          setUser(profile);
-          console.log('[AuthContext] User state set');
-        }
+        setUser(profile);
+        console.log('[AuthContext] User state set');
       } catch (err: any) {
         console.error('[AuthContext] Profile load error:', err);
-        if (mountedRef.current) {
-          setError(err.message || 'Failed to load user profile');
-          setUser(null);
-        }
+        setError(err.message || 'Failed to load user profile');
+        setUser(null);
       } finally {
-        if (mountedRef.current) {
-          console.log('[AuthContext] Profile load complete, setting loading to false');
-          setLoading(false);
-        }
-        isLoadingRef.current = false;
-        loadingUserIdRef.current = null;
+        console.log('[AuthContext] Profile load complete, setting loading to false');
+        setLoading(false);
       }
     };
 
     loadUserProfile();
-
-    return () => {
-      console.log('[AuthContext] Cleanup: cancelling profile load');
-      isLoadingRef.current = false;
-      loadingUserIdRef.current = null;
-    };
   }, [accessToken, userId, BACKEND_URL]);
 
   const login = () => {
